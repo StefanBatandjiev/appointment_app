@@ -35,7 +35,7 @@ class OperationResource extends Resource
             ->schema([
                 TextInput::make('name')->required(),
                 TextInput::make('description'),
-                ColorPicker::make('color')->required()
+                ColorPicker::make('color')->required(),
             ]);
     }
 

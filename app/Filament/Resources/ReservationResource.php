@@ -38,122 +38,15 @@ class ReservationResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $dateFormat = 'Y-m-d';
-
         return $form
             ->schema([
-                Section::make()->schema([
-                    Select::make('client_id')
-                        ->label('Client')
-                        ->options(Client::all()->pluck('name', 'id'))
-                        ->searchable()
-                        ->required()
-                        ->createOptionForm([
-                            TextInput::make('name')
-                                ->label('Name')
-                                ->required(),
-                            TextInput::make('email')
-                                ->label('Email')
-                                ->required()
-                                ->email()
-                                ->unique(Client::class, 'email'),
-                            TextInput::make('telephone')
-                                ->label('Telephone')
-                                ->unique(Client::class, 'telephone')
-                                ->nullable(),
-                        ])
-                        ->createOptionUsing(function (array $data): int{
-                            $client = Client::create([
-                                'name' => $data['name'],
-                                'email' => $data['email'],
-                                'telephone' => $data['telephone'],
-                            ]);
+                Section::make()->schema(
+                    ReservationService::createForm()
+                )->visible(fn($livewire) => $livewire instanceof Pages\CreateReservation),
 
-                            return $client->id;
-                        }),
-                    Select::make('machine_id')
-                        ->label('Machine')
-                        ->options(Machine::all()->pluck('name', 'id'))
-                        ->required()
-                        ->live(),
-                    Select::make('operation_id')
-                        ->label('Operation')
-                        ->options(Operation::all()->pluck('name', 'id'))
-                        ->required(),
-                    DatePicker::make('date')
-                        ->minDate(now()->format($dateFormat))
-                        ->maxDate(now()->addWeeks(2)->format($dateFormat))
-                        ->required()
-                        ->live(),
-                    Select::make('start_time')
-                        ->options(fn (Get $get) => (new ReservationService())->getAvailableTimesForDate($get('date')))
-                        ->hidden(fn (Get $get) => ! $get('date'))
-                        ->required()
-                        ->searchable()
-                        ->live(),
-                    Select::make('duration')
-                        ->label('Duration')
-                        ->options(fn (Get $get) => (new ReservationService())->getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? ''))
-                        ->helperText(fn (Get $get) => (new ReservationService())->getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? ''))
-                        ->hidden(fn (Get $get) => ! $get('start_time'))
-                        ->required()
-                        ->live(),
-                    Select::make('break')
-                        ->label('Break Time')
-                        ->options(fn (Get $get) => (new ReservationService())->getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
-                        ->helperText('You can add a break time after the reservation')
-                        ->hidden(fn (Get $get) => ! $get('duration'))
-                        ->disabled(fn (Get $get) => (new ReservationService())->disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
-                ])->visible(fn($livewire) => $livewire instanceof Pages\CreateReservation),
-
-                Section::make()->schema([
-                    Select::make('client_id')
-                        ->label('Client')
-                        ->options(Client::all()->pluck('name', 'id'))
-                        ->disabled(),
-                    Select::make('user_id')
-                        ->label('Created By User')
-                        ->options(User::all()->pluck('name', 'id'))
-                        ->disabled(),
-                    Select::make('machine_id')
-                        ->label('Machine')
-                        ->options(Machine::all()->pluck('name', 'id'))
-                        ->disabled(),
-                    Select::make('operation_id')
-                        ->label('Operation')
-                        ->options(Operation::all()->pluck('name', 'id'))
-                        ->required(),
-                    TextInput::make('start_time')->disabled(),
-                    TextInput::make('end_time')->disabled(),
-                    TextInput::make('break_time')->disabled(),
-                    Section::make('Change the reservation time')->schema([
-                        DatePicker::make('date')
-                            ->minDate(now()->format($dateFormat))
-                            ->maxDate(now()->addWeeks(2)->format($dateFormat))
-                            ->required()
-                            ->live(),
-                        Select::make('start')
-                            ->options(fn (Get $get) => (new ReservationService())->getAvailableTimesForDate($get('date'), $get('id')))
-                            ->hidden(fn (Get $get) => ! $get('date'))
-                            ->required()
-                            ->searchable()
-                            ->live(),
-                        Select::make('duration')
-                            ->label('Duration')
-                            ->options(fn (Get $get) => (new ReservationService())->getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                            ->helperText(fn (Get $get) => (new ReservationService())->getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                            ->hidden(fn (Get $get) => ! $get('start'))
-                            ->required()
-                            ->live(),
-                        Select::make('break')
-                            ->label('Break Time')
-                            ->options(fn (Get $get) => (new ReservationService())->getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
-                            ->helperText('You can add a break time after the reservation')
-                            ->hidden(fn (Get $get) => ! $get('duration'))
-                            ->disabled(fn (Get $get) => (new ReservationService())->disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
-
-                    ])
-                ])->columns(2)->visible(fn($livewire) => $livewire instanceof Pages\EditReservation)
+                Section::make()->schema(
+                    ReservationService::editForm()
+                )->columns(2)->visible(fn($livewire) => $livewire instanceof Pages\EditReservation)
             ]);
     }
 
@@ -166,7 +59,7 @@ class ReservationResource extends Resource
                 TextColumn::make('machine.name')->label('Machine'),
                 TextColumn::make('operation.name')->label('Operation'),
                 TextColumn::make('start_time')->label('Date and Start Time')->dateTime('D, d M Y H:i')->color(Color::Blue),
-                TextColumn::make('end_time')->label('End Time')->time('H:i')->Color(Color::Green),
+                TextColumn::make('end_time')->label('End Time')->time('H:i')->color(Color::Green),
                 TextColumn::make('break_time')->label('Break Till')->time('H:i')->color(Color::Red),
             ])
             ->filters([
