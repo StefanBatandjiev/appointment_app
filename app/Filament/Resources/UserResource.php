@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +27,11 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 5;
     protected static ?string $navigationIcon = 'heroicon-s-users';
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
 
     public static function form(Form $form): Form
     {
