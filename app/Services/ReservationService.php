@@ -17,8 +17,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Get;
-use Illuminate\Support\Facades\Log;
-
 class ReservationService
 {
     public static function createAction(array $data): array
@@ -80,7 +78,14 @@ class ReservationService
                 ->label('Machine')
                 ->options(Machine::all()->pluck('name', 'id'))
                 ->required()
-                ->live(),
+                ->live()
+                ->reactive()
+                ->afterStateUpdated(function (callable $set) {
+                    $set('date', null);
+                    $set('start_time', null);
+                    $set('duration', null);
+                    $set('break', null);
+                }),
             Select::make('operation_id')
                 ->label('Operation')
                 ->options(Operation::all()->pluck('name', 'id'))
@@ -253,7 +258,7 @@ class ReservationService
                     TimePicker::make('end_time')->time('H:i')->disabled(),
                     TimePicker::make('break_time')->time('H:i')->disabled(),
                 ])
-                ->columns(2)
+                ->columns()
         ];
     }
 
@@ -336,7 +341,7 @@ class ReservationService
 
         return Reservation::query()->where('machine_id', $machine_id)
             ->where('start_time', '>', $start_time)
-            ->orderBy('start_time', 'asc')
+            ->orderBy('start_time')
             ->first();
     }
 
@@ -360,7 +365,7 @@ class ReservationService
 
             $nextReservation = Reservation::query()->where('machine_id', $machine_id)
                 ->where('start_time', '>', $start_time)
-                ->orderBy('start_time', 'asc')
+                ->orderBy('start_time')
                 ->first();
 
             $maxDuration = $nextReservation ? $start_time->diffInMinutes($nextReservation->start_time) : 180;

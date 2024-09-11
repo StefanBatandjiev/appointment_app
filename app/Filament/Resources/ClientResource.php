@@ -32,7 +32,6 @@ class ClientResource extends Resource
                     ->required(),
                 TextInput::make('email')
                     ->label('Email')
-                    ->required()
                     ->email()
                     ->unique(Client::class, 'email'),
                 TextInput::make('telephone')
