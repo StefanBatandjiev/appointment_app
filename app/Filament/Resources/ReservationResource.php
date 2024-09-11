@@ -23,7 +23,10 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
 use Filament\Tables;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -59,12 +62,54 @@ class ReservationResource extends Resource
                 TextColumn::make('machine.name')->label('Machine'),
                 TextColumn::make('operation.name')->label('Operation'),
                 TextColumn::make('start_time')->label('Date and Start Time')->dateTime('D, d M Y H:i')->color(Color::Blue),
-                TextColumn::make('end_time')->label('End Time')->time('H:i')->color(Color::Green),
-                TextColumn::make('break_time')->label('Break Till')->time('H:i')->color(Color::Red),
+                TextColumn::make('end_time')->label('End Time')->time('H:i'),
+                TextColumn::make('break_time')->label('Break Till')->time('H:i'),
+                TextColumn::make('reservation_status')
+                    ->icon(fn(string $state): string => match ($state) {
+                        'Ongoing' => 'heroicon-o-minus-circle',
+                        'Scheduled' => 'heroicon-o-clock',
+                        'Finished' => 'heroicon-o-check-circle',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'Ongoing' => 'warning',
+                        'Scheduled' => 'success',
+                        'Finished' => 'danger',
+                        default => 'gray',
+                    })
+                    ->label('Status')
+                    ->getStateUsing(fn(Reservation $record) => self::getReservationStatus($record))
+                    ->extraAttributes(['class' => 'flex items-center']),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->options([
+                        'Ongoing' => 'Ongoing',
+                        'Scheduled' => 'Scheduled',
+                        'Finished' => 'Finished',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['value'] === 'Ongoing') {
+                            $query->where('start_time', '<=', now())
+                                ->where('end_time', '>=', now());
+                        } elseif ($data['value'] === 'Scheduled') {
+                            $query->where('start_time', '>', now());
+                        } elseif ($data['value'] === 'Finished') {
+                            $query->where('end_time', '<', now());
+                        }
+                    })
+                    ->label('Reservation Status'),
             ])
+            ->defaultSort(function (Builder $query) {
+                $now = now()->timezone('GMT+2');
+
+                return $query
+                    ->orderByRaw("CASE
+                                WHEN start_time <= ? AND end_time >= ? THEN 1
+                                WHEN start_time > ? THEN 2
+                                WHEN end_time < ? THEN 3
+                              END", [$now, $now, $now, $now])
+                    ->orderBy('start_time');
+            })
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -90,5 +135,17 @@ class ReservationResource extends Resource
             'create' => Pages\CreateReservation::route('/create'),
             'edit' => Pages\EditReservation::route('/{record}/edit'),
         ];
+    }
+
+    protected static function getReservationStatus(Reservation $reservation): string
+    {
+        $currentDate = now()->timezone('GMT+2');
+        if ($currentDate->between($reservation->start_time, $reservation->end_time)) {
+            return 'Ongoing';
+        } elseif ($currentDate->lessThan($reservation->start_time)) {
+            return 'Scheduled';
+        } else {
+            return 'Finished';
+        }
     }
 }
