@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OperationResource\Pages;
 use App\Filament\Resources\OperationResource\RelationManagers;
+use App\Models\Machine;
 use App\Models\Operation;
 use Filament\Forms;
 use Filament\Forms\Components\ColorPicker;
@@ -36,6 +37,11 @@ class OperationResource extends Resource
                 TextInput::make('name')->required(),
                 TextInput::make('description'),
                 ColorPicker::make('color')->required(),
+                Select::make('Machines')
+                    ->relationship('machines', 'name')
+                    ->options(Machine::all()->pluck('name', 'id'))
+                    ->label('Machines')
+                    ->multiple()
             ]);
     }
 
@@ -45,7 +51,9 @@ class OperationResource extends Resource
             ->columns([
                 TextColumn::make('name'),
                 TextColumn::make('description'),
-                ColorColumn::make('color')
+                ColorColumn::make('color'),
+                TextColumn::make('machines.name')
+                    ->label('Machines')
             ])
             ->filters([
                 //

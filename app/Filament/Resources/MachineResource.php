@@ -5,7 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MachineResource\Pages;
 use App\Filament\Resources\MachineResource\RelationManagers;
 use App\Models\Machine;
+use App\Models\Operation;
 use Filament\Forms;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -30,7 +32,12 @@ class MachineResource extends Resource
         return $form
             ->schema([
                 TextInput::make('name')->required(),
-                TextInput::make('description')
+                TextInput::make('description'),
+                Select::make('operations')
+                    ->relationship('operations', 'name')
+                    ->options(Operation::all()->pluck('name', 'id'))
+                    ->label('Operations')
+                    ->multiple(),
             ]);
     }
 
@@ -39,7 +46,9 @@ class MachineResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name'),
-                TextColumn::make('description')
+                TextColumn::make('description'),
+                TextColumn::make('operations.name')
+                    ->label('Operations')
             ])
             ->filters([
                 //
