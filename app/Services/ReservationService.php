@@ -236,11 +236,11 @@ class ReservationService
                         ->disabled(),
                     Select::make('client_id')
                         ->label('Client Telephone')
-                        ->options(Client::all()->pluck('telephone', 'id'))
+                        ->options(Client::all()->pluck('telephone', 'id')->map(fn($telephone) => $telephone ?? 'N/A'))
                         ->disabled(),
                     Select::make('client_id')
                         ->label('Client Email')
-                        ->options(Client::all()->pluck('email', 'id'))
+                        ->options(Client::all()->pluck('email', 'id')->map(fn($email) => $email ?? 'N/A'))
                         ->disabled(),
                     Select::make('user_id')
                         ->label('Created By User')
