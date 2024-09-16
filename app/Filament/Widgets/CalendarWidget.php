@@ -119,6 +119,8 @@ class CalendarWidget extends BaseCalendarWidget
                         ->title('Reservation Created')
                         ->success()
                         ->send();
+
+                    $this->refreshRecords();
                 })
         ];
     }
