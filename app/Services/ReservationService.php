@@ -88,9 +88,14 @@ class ReservationService
                 }),
             Select::make('operation_id')
                 ->label('Operation')
-                ->options(Operation::all()->pluck('name', 'id'))
                 ->searchable()
                 ->required()
+                ->hidden(fn(Get $get) => !$get('machine_id'))
+                ->options(
+                    fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
+                                        $query->where('machine_id', $get('machine_id'));
+                                    })->pluck('name', 'id')
+                )
                 ->createOptionForm([
                     TextInput::make('name')->required(),
                     TextInput::make('description'),
@@ -104,11 +109,11 @@ class ReservationService
                     ]);
 
                     return $operation->id;
-                }),
+                })->live(),
             DatePicker::make('date')
                 ->minDate(now()->format('Y-m-d'))
                 ->maxDate(now()->addMonths(2)->format('Y-m-d'))
-                ->hidden(fn(Get $get) => !$get('machine_id'))
+                ->hidden(fn(Get $get) => !$get('operation_id'))
                 ->required()
                 ->live(),
             Select::make('start_time')
@@ -178,7 +183,11 @@ class ReservationService
                 ->disabled(),
             Select::make('operation_id')
                 ->label('Operation')
-                ->options(Operation::all()->pluck('name', 'id'))
+                ->options(
+                    fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
+                        $query->where('machine_id', $get('machine_id'));
+                    })->pluck('name', 'id')
+                )
                 ->searchable()
                 ->required()
                 ->createOptionForm([
