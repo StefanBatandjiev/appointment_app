@@ -137,6 +137,8 @@ class CalendarWidget extends BaseCalendarWidget
 
                     $reservation->updateOrFail($data);
 
+                    $this->refreshRecords();
+
                     Notification::make()
                         ->title('Reservation Created')
                         ->success()
