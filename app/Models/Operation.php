@@ -11,11 +11,11 @@ class Operation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['machine_id', 'name', 'description', 'color'];
+    protected $fillable = ['machine_id', 'name', 'description', 'price', 'color'];
 
-    public function reservations(): HasMany
+    public function reservations(): BelongsToMany
     {
-        return $this->hasMany(Reservation::class);
+        return $this->belongsToMany(Reservation::class, 'operation_reservation', 'operation_id', 'reservation_id');
     }
 
     public function machines(): BelongsToMany

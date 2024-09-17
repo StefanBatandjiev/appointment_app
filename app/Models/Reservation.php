@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Reservation extends Model
 {
@@ -14,14 +15,19 @@ class Reservation extends Model
 
     protected $dates = ['start_time', 'end_time'. 'break_time'];
 
+    public function getTotalPriceAttribute()
+    {
+        return $this->operations->sum('price');
+    }
+
     public function machine(): BelongsTo
     {
         return $this->belongsTo(Machine::class);
     }
 
-    public function operation(): BelongsTo
+    public function operations(): BelongsToMany
     {
-        return $this->belongsTo(Operation::class);
+        return $this->belongsToMany(Operation::class, 'operation_reservation', 'reservation_id', 'operation_id');
     }
 
     public function user(): BelongsTo

@@ -3,7 +3,12 @@
         <div>
             <div class="flex flex-row justify-between">
                 <span x-text="timeText" class="font-semibold text-md"></span>
-                <span x-text="event.title" class="text-xs"></span>
+                <div class="flex flex-col items-end">
+                    <span x-text="event.title" class="text-xs"></span>
+                    <template x-if="event.title !== 'Break Time'">
+                        <span class="text-base font-semibold"><span x-text="event.extendedProps.total_price" ></span> MKD</span>
+                    </template>
+                </div>
             </div>
 
             <template x-if="event.title !== 'Break Time'">

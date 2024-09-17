@@ -36,6 +36,7 @@ class OperationResource extends Resource
             ->schema([
                 TextInput::make('name')->required(),
                 TextInput::make('description'),
+                TextInput::make('price')->numeric()->required(),
                 ColorPicker::make('color')->required(),
                 Select::make('Machines')
                     ->relationship('machines', 'name')
@@ -51,6 +52,9 @@ class OperationResource extends Resource
             ->columns([
                 TextColumn::make('name'),
                 TextColumn::make('description'),
+                TextColumn::make('price')
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, '.', ',') . ' MKD') // Format price to 2 decimal places and append a dollar sign
+                    ->label('Price'),
                 ColorColumn::make('color'),
                 TextColumn::make('machines.name')
                     ->label('Machines')

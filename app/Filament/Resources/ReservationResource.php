@@ -60,10 +60,13 @@ class ReservationResource extends Resource
                 TextColumn::make('user.name')->label('Created By User'),
                 TextColumn::make('client.name')->label('Client'),
                 TextColumn::make('machine.name')->label('Machine'),
-                TextColumn::make('operation.name')->label('Operation'),
+                TextColumn::make('operations.name')->label('Operations'),
                 TextColumn::make('start_time')->label('Date and Start Time')->dateTime('D, d M Y H:i')->color(Color::Blue),
                 TextColumn::make('end_time')->label('End Time')->time('H:i'),
                 TextColumn::make('break_time')->label('Break Till')->time('H:i'),
+                TextColumn::make('total_price')
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, '.', ',') . ' MKD')
+                    ->label('Total Price'),
                 TextColumn::make('reservation_status')
                     ->icon(fn(string $state): string => match ($state) {
                         'Ongoing' => 'heroicon-o-minus-circle',

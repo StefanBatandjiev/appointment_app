@@ -86,8 +86,10 @@ class ReservationService
                     $set('duration', null);
                     $set('break', null);
                 }),
-            Select::make('operation_id')
-                ->label('Operation')
+            Select::make('operations')
+                ->relationship('operations', 'name')
+                ->label('Operations')
+                ->multiple()
                 ->searchable()
                 ->required()
                 ->hidden(fn(Get $get) => !$get('machine_id'))
@@ -113,7 +115,7 @@ class ReservationService
             DatePicker::make('date')
                 ->minDate(now()->format('Y-m-d'))
                 ->maxDate(now()->addMonths(2)->format('Y-m-d'))
-                ->hidden(fn(Get $get) => !$get('operation_id'))
+                ->hidden(fn(Get $get) => !$get('operations'))
                 ->required()
                 ->live(),
             Select::make('start_time')
@@ -181,13 +183,15 @@ class ReservationService
                 ->label('Machine')
                 ->options(Machine::all()->pluck('name', 'id'))
                 ->disabled(),
-            Select::make('operation_id')
-                ->label('Operation')
+            Select::make('operations')
+                ->relationship('operations', 'name')
+                ->label('Operations')
                 ->options(
                     fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
                         $query->where('machine_id', $get('machine_id'));
                     })->pluck('name', 'id')
                 )
+                ->multiple()
                 ->searchable()
                 ->required()
                 ->createOptionForm([
@@ -259,10 +263,13 @@ class ReservationService
                         ->label('Machine')
                         ->options(Machine::all()->pluck('name', 'id'))
                         ->disabled(),
-                    Select::make('operation_id')
+                    Select::make('operations')
+                        ->relationship('operations', 'name')
                         ->label('Operation')
                         ->options(Operation::all()->pluck('name', 'id'))
+                        ->multiple()
                         ->disabled(),
+                    TextInput::make('total_price')->label('Total Price')->disabled(),
                     DateTimePicker::make('start_time')->label('Date and Start Time')->format('D, d M Y H:i')->disabled(),
                     TimePicker::make('end_time')->time('H:i')->disabled(),
                     TimePicker::make('break_time')->time('H:i')->disabled(),

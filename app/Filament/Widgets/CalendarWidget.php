@@ -45,7 +45,7 @@ class CalendarWidget extends BaseCalendarWidget
     public function getEvents(array $fetchInfo = []): Collection|array
     {
         return Reservation::query()
-            ->with('operation')
+            ->with('operations')
             ->where('start_time', '>=', $fetchInfo['start'])
             ->where('end_time', '<=', $fetchInfo['end'])
             ->get()
@@ -53,16 +53,19 @@ class CalendarWidget extends BaseCalendarWidget
 
                 $events = [];
 
+                $operationNames = $reservation->operations->pluck('name')->implode(', ');
+
                 $events[] = Event::make($reservation)
                     ->resourceId($reservation->machine->id)
-                    ->title($reservation->operation->name)
+                    ->title($operationNames)
                     ->start($reservation->start_time)
                     ->end($reservation->end_time)
-                    ->backgroundColor($reservation->operation->color)
+                    ->backgroundColor($reservation->operations->first()->color)
                     ->textColor('#314155')
                     ->extendedProps([
                             'client' => $reservation->client->name,
-                            'user' => $reservation->user->name
+                            'user' => $reservation->user->name,
+                            'total_price' => $reservation->getTotalPriceAttribute()
                         ]);
 
                 if ($reservation->break_time) {
