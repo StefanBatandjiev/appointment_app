@@ -11,9 +11,9 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Guava\Calendar\Actions\CreateAction;
@@ -120,7 +120,8 @@ class CalendarWidget extends BaseCalendarWidget
     public function getHeaderActions(): array
     {
         return [
-            CreateAction::make('CreateReservation')
+            CreateAction::make('createReservation')
+                ->label('New Reservation')
                 ->model(Reservation::class)
                 ->action(function (array $data) {
 
@@ -132,6 +133,130 @@ class CalendarWidget extends BaseCalendarWidget
 
                     Notification::make()
                         ->title('Reservation Created')
+                        ->success()
+                        ->send();
+
+                    $this->refreshRecords();
+                }),
+            CreateAction::make('createMultipleReservations')
+                ->label('Create Multiple Reservations')
+                ->model(Reservation::class)
+                ->form([
+                    Select::make('client_id')
+                        ->label('Client')
+                        ->options(Client::all()->pluck('name', 'id'))
+                        ->searchable()
+                        ->required()
+                        ->live()
+                        ->createOptionForm([
+                            TextInput::make('name')->label('Name')->required(),
+                            TextInput::make('email')->label('Email')->required()->email()->unique(Client::class, 'email'),
+                            TextInput::make('telephone')->label('Telephone')->unique(Client::class, 'telephone')->nullable(),
+                        ])
+                        ->createOptionUsing(function (array $data): int {
+                            $client = Client::query()->create($data);
+                            return $client->id;
+                        }),
+
+                    Repeater::make('reservations')
+                        ->label('')
+                        ->schema(function () {
+
+                            return [
+                                Select::make('machine_id')
+                                    ->label('Machine')
+                                    ->options(Machine::all()->pluck('name', 'id'))
+                                    ->required()
+                                    ->reactive()
+                                    ->live(),
+                                Select::make('operations')
+                                    ->label('Operations')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->required()
+                                    ->hidden(fn(Get $get) => !$get('machine_id'))
+                                    ->options(
+                                        fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
+                                            $query->where('machine_id', $get('machine_id'));
+                                        })->pluck('name', 'id')
+                                    )
+                                    ->createOptionForm([
+                                        TextInput::make('name')->required(),
+                                        TextInput::make('description'),
+                                        TextInput::make('price')->numeric()->required(),
+                                        ColorPicker::make('color')->required(),
+                                    ])
+                                    ->createOptionUsing(function (array $data): int {
+                                        $operation = Operation::query()->create([
+                                            'name' => $data['name'],
+                                            'description' => $data['description'],
+                                            'color' => $data['color'],
+                                            'price' => $data['price'],
+                                        ]);
+
+                                        return $operation->id;
+                                    })
+                                    ->live()
+                                    ->reactive(),
+                                DatePicker::make('date')
+                                    ->minDate(now()->format('Y-m-d'))
+                                    ->maxDate(now()->addMonths(2)->format('Y-m-d'))
+                                    ->hidden(fn(Get $get) => !$get('operations'))
+                                    ->required()
+                                    ->live(),
+                                Select::make('start_time')
+                                    ->options(fn(Get $get) => ReservationService::getAvailableTimesForDate($get('machine_id'), $get('date')))
+                                    ->hidden(fn(Get $get) => !$get('date'))
+                                    ->required()
+                                    ->searchable()
+                                    ->live(),
+                                Select::make('duration')
+                                    ->label('Duration')
+                                    ->options(fn(Get $get) => ReservationService::getDurations($get('machine_id'), $get('date') ?? '', $get('start_time') ?? ''))
+                                    ->helperText(fn(Get $get) => ReservationService::getNextReservationStartTime($get('machine_id'), $get('date') ?? '', $get('start_time') ?? ''))
+                                    ->hidden(fn(Get $get) => !$get('start_time'))
+                                    ->required()
+                                    ->live(),
+                                Select::make('break')
+                                    ->label('Break Time')
+                                    ->options(fn(Get $get) => ReservationService::getAvailableBreakDurations($get('machine_id'), $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
+                                    ->helperText('You can add a break time after the reservation')
+                                    ->hidden(fn(Get $get) => !$get('duration'))
+                                    ->disabled(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id'), $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
+                            ];
+                        })
+                        ->addActionLabel('Add Another Reservation')
+                        ->live()
+                        ->reactive()
+                        ->hidden(fn(Get $get) => !$get('client_id'))
+                        ->defaultItems(1)
+                        ->itemLabel(function () {
+                            static $position = 1;
+                            return 'Reservation #' . $position++;
+                        })
+                        ->addable()
+                        ->deletable()
+                        ->collapsible()
+                        ->reorderable(false)
+                ])
+                ->action(function (array $data) {
+                    foreach ($data['reservations'] as $reservation) {
+                        $attributes = ReservationService::createAction([
+                            'client_id' => $data['client_id'],
+                            'machine_id' => $reservation['machine_id'],
+                            'date' => $reservation['date'],
+                            'start_time' => $reservation['start_time'],
+                            'duration' => $reservation['duration'],
+                            'break' => $reservation['break'],
+                        ]);
+
+                        $res = Reservation::query()->create($attributes);
+
+                        $res->operations()->sync($reservation['operations']);
+                    }
+
+                    Notification::make()
+                        ->title('Reservations Created')
                         ->success()
                         ->send();
 

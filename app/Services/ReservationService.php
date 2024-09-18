@@ -12,6 +12,7 @@ use Carbon\CarbonPeriod;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -273,7 +274,7 @@ class ReservationService
                         ->options(Operation::all()->pluck('name', 'id'))
                         ->multiple()
                         ->disabled(),
-                    TextInput::make('total_price')->label('Total Price')->disabled(),
+//                    TextInput::make('total_price')->label('Total Price')->disabled(),
                     DateTimePicker::make('start_time')->label('Date and Start Time')->format('D, d M Y H:i')->disabled(),
                     TimePicker::make('end_time')->time('H:i')->disabled(),
                     TimePicker::make('break_time')->time('H:i')->disabled(),
