@@ -101,6 +101,7 @@ class ReservationService
                 ->createOptionForm([
                     TextInput::make('name')->required(),
                     TextInput::make('description'),
+                    TextInput::make('price')->numeric()->required(),
                     ColorPicker::make('color')->required()
                 ])
                 ->createOptionUsing(function (array $data): int {
@@ -108,6 +109,7 @@ class ReservationService
                         'name' => $data['name'],
                         'description' => $data['description'],
                         'color' => $data['color'],
+                        'price' => $data['price'],
                     ]);
 
                     return $operation->id;
@@ -197,6 +199,7 @@ class ReservationService
                 ->createOptionForm([
                     TextInput::make('name')->required(),
                     TextInput::make('description'),
+                    TextInput::make('price')->numeric()->required(),
                     ColorPicker::make('color')->required()
                 ])
                 ->createOptionUsing(function (array $data): int {
@@ -204,6 +207,7 @@ class ReservationService
                         'name' => $data['name'],
                         'description' => $data['description'],
                         'color' => $data['color'],
+                        'price' => $data['price'],
                     ]);
 
                     return $operation->id;
