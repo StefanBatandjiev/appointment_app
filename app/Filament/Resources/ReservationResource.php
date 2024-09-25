@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\ReservationStatus;
 use App\Filament\Resources\ReservationResource\Pages;
 use App\Filament\Resources\ReservationResource\RelationManagers;
 use App\Models\Client;
@@ -58,61 +59,92 @@ class ReservationResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('user.name')->label('Created By User'),
-                TextColumn::make('client.name')->label('Client'),
+                TextColumn::make('client.name')->label('Client')->searchable(),
                 TextColumn::make('machine.name')->label('Machine'),
+                TextColumn::make('assigned_user.name')->label('Assigned User'),
                 TextColumn::make('operations.name')->label('Operations'),
                 TextColumn::make('start_time')->label('Date and Start Time')->dateTime('D, d M Y H:i')->color(Color::Blue),
                 TextColumn::make('end_time')->label('End Time')->time('H:i'),
                 TextColumn::make('break_time')->label('Break Till')->time('H:i'),
                 TextColumn::make('total_price')
-                    ->formatStateUsing(fn ($state) => number_format($state, 2, '.', ',') . ' MKD')
+                    ->formatStateUsing(fn($state) => number_format($state, 2, '.', ',') . ' MKD')
                     ->label('Total Price'),
                 TextColumn::make('reservation_status')
-                    ->icon(fn(string $state): string => match ($state) {
-                        'Ongoing' => 'heroicon-o-minus-circle',
-                        'Scheduled' => 'heroicon-o-clock',
-                        'Finished' => 'heroicon-o-check-circle',
+                    ->icon(fn(Reservation $record): string => match ($record->getReservationStatusAttribute()) {
+                        ReservationStatus::ONGOING => 'heroicon-o-minus-circle',
+                        ReservationStatus::SCHEDULED => 'heroicon-o-clock',
+                        ReservationStatus::FINISHED => 'heroicon-o-check-circle',
+                        ReservationStatus::CANCELED => 'heroicon-o-x-circle',
+                        ReservationStatus::PENDING_FINISH => 'heroicon-o-exclamation-circle',
+                        default => 'heroicon-o-question-mark-circle',
                     })
-                    ->color(fn(string $state): string => match ($state) {
-                        'Ongoing' => 'warning',
-                        'Scheduled' => 'success',
-                        'Finished' => 'danger',
+                    ->color(fn(Reservation $record): string => match ($record->getReservationStatusAttribute()) {
+                        ReservationStatus::ONGOING => 'warning',
+                        ReservationStatus::SCHEDULED => 'success',
+                        ReservationStatus::FINISHED => 'primary',
+                        ReservationStatus::CANCELED => 'danger',
+                        ReservationStatus::PENDING_FINISH => 'secondary',
                         default => 'gray',
                     })
                     ->label('Status')
-                    ->getStateUsing(fn(Reservation $record) => self::getReservationStatus($record))
-                    ->extraAttributes(['class' => 'flex items-center']),
+                    ->sortable()
             ])
             ->filters([
-                SelectFilter::make('status')
+                SelectFilter::make('reservation_status')
                     ->options([
-                        'Ongoing' => 'Ongoing',
-                        'Scheduled' => 'Scheduled',
-                        'Finished' => 'Finished',
+                        ReservationStatus::ONGOING->value => 'Ongoing',
+                        ReservationStatus::SCHEDULED->value => 'Scheduled',
+                        ReservationStatus::PENDING_FINISH->value => 'Pending Finish',
+                        ReservationStatus::FINISHED->value => 'Finished',
+                        ReservationStatus::CANCELED->value => 'Canceled',
                     ])
                     ->query(function (Builder $query, array $data) {
-                        if ($data['value'] === 'Ongoing') {
-                            $query->where('start_time', '<=', now())
-                                ->where('end_time', '>=', now());
-                        } elseif ($data['value'] === 'Scheduled') {
-                            $query->where('start_time', '>', now());
-                        } elseif ($data['value'] === 'Finished') {
-                            $query->where('end_time', '<', now());
+                        $status = $data['value'];
+
+                        $currentDate = now()->timezone('GMT+2');
+
+                        if ($status === ReservationStatus::ONGOING->value) {
+                            $query->where('start_time', '<=', $currentDate)->where('end_time', '>=', $currentDate)
+                                ->where('status', '!=', ReservationStatus::CANCELED);
+                        } elseif ($status === ReservationStatus::SCHEDULED->value) {
+                            $query->where('start_time', '>=', $currentDate)
+                                ->where('status', '!=', ReservationStatus::CANCELED);
+                        } elseif ($status === ReservationStatus::PENDING_FINISH->value) {
+                            $query->where('end_time', '<=', $currentDate)
+                                ->where('status', '!=', ReservationStatus::CANCELED)
+                                ->where('status', '!=', ReservationStatus::FINISHED);
+                        } elseif ($status === ReservationStatus::FINISHED->value) {
+                            $query->where('status', ReservationStatus::FINISHED);
+                        } elseif ($status === ReservationStatus::CANCELED->value) {
+                            $query->where('status', ReservationStatus::CANCELED);
                         }
                     })
                     ->label('Reservation Status'),
+
             ])
             ->defaultSort(function (Builder $query) {
-                $now = now()->timezone('GMT+2');
+                $currentDate = now()->timezone('GMT+2');
 
                 return $query
                     ->orderByRaw("CASE
-                                WHEN start_time <= ? AND end_time >= ? THEN 1
-                                WHEN start_time > ? THEN 2
-                                WHEN end_time < ? THEN 3
-                              END", [$now, $now, $now, $now])
+                WHEN status = ? THEN 5
+                WHEN start_time <= ? AND end_time >= ? THEN 1
+                WHEN start_time >= ? THEN 2
+                WHEN end_time <= ? THEN 3
+                WHEN status = ? THEN 4
+            END",
+                        [
+                            ReservationStatus::CANCELED->value,
+                            $currentDate,
+                            $currentDate,
+                            $currentDate,
+                            $currentDate,
+                            ReservationStatus::FINISHED->value,
+                        ]
+                    )
                     ->orderBy('start_time');
             })
+
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -138,17 +170,5 @@ class ReservationResource extends Resource
             'create' => Pages\CreateReservation::route('/create'),
             'edit' => Pages\EditReservation::route('/{record}/edit'),
         ];
-    }
-
-    protected static function getReservationStatus(Reservation $reservation): string
-    {
-        $currentDate = now()->timezone('GMT+2');
-        if ($currentDate->between($reservation->start_time, $reservation->end_time)) {
-            return 'Ongoing';
-        } elseif ($currentDate->lessThan($reservation->start_time)) {
-            return 'Scheduled';
-        } else {
-            return 'Finished';
-        }
     }
 }

@@ -49,9 +49,14 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
-    public function reservations(): HasMany
+    public function created_reservations(): HasMany
     {
-        return $this->hasMany(Reservation::class);
+        return $this->hasMany(Reservation::class, 'user_id');
+    }
+
+    public function assigned_reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class, 'assigned_user_id');
     }
 
     public function canAccessPanel(Panel $panel): bool

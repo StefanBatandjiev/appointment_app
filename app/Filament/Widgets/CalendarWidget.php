@@ -2,20 +2,31 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\ReservationStatus;
 use App\Models\Client;
 use App\Models\Machine;
 use App\Models\Operation;
 use App\Models\Reservation;
+use App\Models\User;
 use App\Services\ReservationService;
 use Closure;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\VerticalAlignment;
 use Guava\Calendar\Actions\CreateAction;
 use Guava\Calendar\Actions\EditAction;
 use Guava\Calendar\Actions\ViewAction;
@@ -31,6 +42,13 @@ class CalendarWidget extends BaseCalendarWidget
 
     protected string|Closure|HtmlString|null $heading = 'Reservation Calendar';
     protected bool $eventClickEnabled = true;
+    protected bool $dateClickEnabled = true;
+
+    public function onDateClick(array $info = []): void
+    {
+        $this->setOption('date', $info['dateStr']);
+        $this->setOption('view', 'resourceTimeGridDay');
+    }
 
     protected array|Closure $options = [
         'slotMinTime' => '08:00:00',
@@ -40,12 +58,13 @@ class CalendarWidget extends BaseCalendarWidget
         'allDaySlot' => false,
         'datesAboveResources' => true,
         'buttonText' => [
-            'resourceTimeGridWeek' => 'Weeks',
-            'resourceTimeGridDay' => 'Days',
+            'dayGridMonth' => 'Month',
+            'resourceTimeGridWeek' => 'Week',
+            'resourceTimeGridDay' => 'Day',
             'today' => 'Today'
         ],
         'headerToolbar' => [
-            'start' => 'resourceTimeGridDay, resourceTimeGridWeek',
+            'start' => 'resourceTimeGridDay, resourceTimeGridWeek, dayGridMonth',
             'center' => 'title',
             'end' => 'prev, today, next',
         ]
@@ -64,26 +83,48 @@ class CalendarWidget extends BaseCalendarWidget
 
                 $operationNames = $reservation->operations->pluck('name')->implode(', ');
 
-                $events[] = Event::make($reservation)
-                    ->resourceId($reservation->machine->id)
-                    ->title($operationNames)
-                    ->start($reservation->start_time)
-                    ->end($reservation->end_time)
-                    ->backgroundColor($reservation->operations->first()->color)
-                    ->textColor('#314155')
-                    ->extendedProps([
-                        'client' => $reservation->client->name,
-                        'user' => $reservation->user->name,
-                        'total_price' => $reservation->getTotalPriceAttribute()
-                    ]);
+                if ($reservation->status !== ReservationStatus::CANCELED) {
+                    $events[] = Event::make($reservation)
+                        ->resourceId($reservation->machine->id)
+                        ->title($operationNames)
+                        ->start($reservation->start_time)
+                        ->end($reservation->end_time)
+                        ->backgroundColor(match ($reservation->getReservationStatusAttribute()) {
+                            ReservationStatus::FINISHED => '#bbcafc',
+                            ReservationStatus::PENDING_FINISH => '#e1e2e3',
+                            default => $reservation->operations->first()->color
+                        })
+                        ->textColor('#314155')
+                        ->extendedProps([
+                            'client' => $reservation->client->name,
+                            'assigned_user' => $reservation->assigned_user->name,
+                            'total_price' => $reservation->getTotalPriceAttribute(),
+                            'status' => $reservation->getReservationStatusAttribute(),
+                            'icon' => match ($reservation->getReservationStatusAttribute()) {
+                                ReservationStatus::ONGOING => 'vendor/blade-heroicons/o-minus-circle.svg',
+                                ReservationStatus::SCHEDULED => 'vendor/blade-heroicons/o-clock.svg',
+                                ReservationStatus::FINISHED => 'vendor/blade-heroicons/o-check-circle.svg',
+                                ReservationStatus::CANCELED => 'vendor/blade-heroicons/o-x-circle.svg',
+                                ReservationStatus::PENDING_FINISH => 'vendor/blade-heroicons/o-exclamation-circle.svg',
+                            },
+                            'iconColor' => match ($reservation->getReservationStatusAttribute()) {
+                                ReservationStatus::ONGOING => 'filter: brightness(0) saturate(100%) invert(79%) sepia(66%) saturate(2254%) hue-rotate(352deg) brightness(103%) contrast(104%);',
+                                ReservationStatus::SCHEDULED => 'filter: brightness(0) saturate(100%) invert(53%) sepia(20%) saturate(1649%) hue-rotate(81deg) brightness(94%) contrast(88%);',
+                                ReservationStatus::FINISHED => 'filter: brightness(0) saturate(100%) invert(31%) sepia(28%) saturate(6136%) hue-rotate(200deg) brightness(104%) contrast(105%);',
+                                ReservationStatus::CANCELED => 'filter: brightness(0) saturate(100%) invert(38%) sepia(68%) saturate(5599%) hue-rotate(337deg) brightness(90%) contrast(90%);',
+                                ReservationStatus::PENDING_FINISH => 'filter: brightness(0) saturate(100%) invert(46%) sepia(17%) saturate(241%) hue-rotate(167deg) brightness(94%) contrast(86%);',
+                            }
+                        ]);
+                }
 
-                if ($reservation->break_time) {
+
+                if ($reservation->break_time && $reservation->status !== ReservationStatus::CANCELED) {
                     $events[] = Event::make($reservation)
                         ->resourceId($reservation->machine->id)
                         ->title('Break Time')
                         ->start($reservation->end_time)
                         ->end($reservation->break_time)
-                        ->backgroundColor('#FF7F7F')
+                        ->backgroundColor($reservation->status === ReservationStatus::FINISHED ? '#f7d0e0' : '#FF7F7F')
                         ->textColor('#000000');
                 }
 
@@ -120,26 +161,8 @@ class CalendarWidget extends BaseCalendarWidget
     public function getHeaderActions(): array
     {
         return [
-            CreateAction::make('createReservation')
-                ->label('New Reservation')
-                ->model(Reservation::class)
-                ->action(function (array $data) {
-
-                    $data = ReservationService::createAction($data);
-
-                    $reservation = Reservation::query()->create($data);
-
-                    $reservation->operations()->sync($data['operations']);
-
-                    Notification::make()
-                        ->title('Reservation Created')
-                        ->success()
-                        ->send();
-
-                    $this->refreshRecords();
-                }),
             CreateAction::make('createMultipleReservations')
-                ->label('Create Multiple Reservations')
+                ->label('Create Reservations')
                 ->model(Reservation::class)
                 ->form([
                     Select::make('client_id')
@@ -169,6 +192,11 @@ class CalendarWidget extends BaseCalendarWidget
                                     ->required()
                                     ->reactive()
                                     ->live(),
+                                Select::make('assigned_user_id')
+                                    ->label('Assigned User')
+                                    ->options(User::all()->pluck('name', 'id'))
+                                    ->nullable()
+                                    ->searchable(),
                                 Select::make('operations')
                                     ->label('Operations')
                                     ->multiple()
@@ -244,6 +272,7 @@ class CalendarWidget extends BaseCalendarWidget
                         $attributes = ReservationService::createAction([
                             'client_id' => $data['client_id'],
                             'machine_id' => $reservation['machine_id'],
+                            'assigned_user_id' => $reservation['assigned_user_id'],
                             'date' => $reservation['date'],
                             'start_time' => $reservation['start_time'],
                             'duration' => $reservation['duration'],
@@ -290,7 +319,116 @@ class CalendarWidget extends BaseCalendarWidget
     {
         return ViewAction::make('ViewReservation')
             ->model(Reservation::class)
-            ->form(ReservationService::viewForm());
+            ->form([
+                Section::make()->schema([
+                    Placeholder::make('status')
+                        ->label(new HtmlString('<span class="text-lg font-extralight text-center">Status</span>'))
+                        ->content(function (Reservation $record): HtmlString {
+                        $svg = match ($record->status) {
+                            ReservationStatus::ONGOING => svg('heroicon-o-minus-circle', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(79%) sepia(66%) saturate(2254%) hue-rotate(352deg) brightness(103%) contrast(104%);'])->toHtml(),
+                            ReservationStatus::SCHEDULED => svg('heroicon-o-clock', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(53%) sepia(20%) saturate(1649%) hue-rotate(81deg) brightness(94%) contrast(88%);'])->toHtml(),
+                            ReservationStatus::FINISHED => svg('heroicon-o-check-circle', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(31%) sepia(28%) saturate(6136%) hue-rotate(200deg) brightness(104%) contrast(105%);'])->toHtml(),
+                            ReservationStatus::CANCELED => svg('heroicon-o-x-circle', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(38%) sepia(68%) saturate(5599%) hue-rotate(337deg) brightness(90%) contrast(90%);'])->toHtml(),
+                            ReservationStatus::PENDING_FINISH => svg('heroicon-o-exclamation-circle', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(46%) sepia(17%) saturate(241%) hue-rotate(167deg) brightness(94%) contrast(86%);'])->toHtml(),
+                        };
+
+                        return new HtmlString("
+                            <div class=\"flex items-center\">
+                                <span class=\"px-1 text-lg\">{$record->status->value}</span>
+                                {$svg}
+                            </div>
+                        ");
+                    }),
+                    Placeholder::make('total_price')
+                        ->label(new HtmlString('<span class="text-lg font-extralight text-center">Total Price</span>'))
+                        ->content(function (Reservation $record): HtmlString {
+                            return new HtmlString("
+                            <span class=\"px-1 text-lg font-semibold text-center\">{$record->getTotalPriceAttribute()} MKD</span>
+                        ");
+                        }),
+                    Actions::make([
+                        \Filament\Forms\Components\Actions\Action::make('Cancel Reservation')
+                            ->color('danger')
+                            ->hidden(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::CANCELED ||
+                                $record->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                                $record->getReservationStatusAttribute() === ReservationStatus::FINISHED)
+                            ->action(function (Reservation $record) {
+                                try {
+                                    $record->update(['status' => ReservationStatus::CANCELED]);
+                                    $this->refreshRecords();
+                                    time_nanosleep(1, 0);
+
+                                    $this->closeActionModal();
+
+                                    Notification::make()
+                                        ->title('Canceled Reservation')
+                                        ->success()
+                                        ->send();
+
+                                } catch (\Exception $e) {
+                                    $this->closeActionModal();
+
+                                    Notification::make()
+                                        ->title('Failed to cancel reservation.')
+                                        ->danger()
+                                        ->send();
+
+                                }
+                            }),
+                        \Filament\Forms\Components\Actions\Action::make('Finish Reservation')
+                            ->color('primary')
+                            ->visible(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH)
+                            ->hidden(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::FINISHED || $record->getReservationStatusAttribute() === ReservationStatus::CANCELED)
+                            ->action(function ($record) {
+                                try {
+                                    $record->update(['status' => ReservationStatus::FINISHED]);
+                                    time_nanosleep(1, 0);
+                                    $this->refreshRecords();
+
+                                    $this->closeActionModal();
+
+                                    Notification::make()
+                                        ->title('Finished Reservation')
+                                        ->success()
+                                        ->send();
+                                } catch (\Exception $e) {
+
+                                    $this->closeActionModal();
+
+                                    Notification::make()
+                                        ->title('Failed to finish reservation.')
+                                        ->danger()
+                                        ->send();
+                                }
+                            }),
+                        \Filament\Forms\Components\Actions\Action::make('Invoice')
+                            ->icon('heroicon-o-document-arrow-down')
+                            ->label('Generate Invoice')
+                            ->color('primary')
+                            ->visible(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::FINISHED)
+                            ->url(fn (Reservation $record) => route('reservation.invoice.download', $record))->openUrlInNewTab(),
+                    ])->verticallyAlignCenter(),
+                    Select::make('client_id')
+                        ->label('Client Name')
+                        ->options(Client::all()->pluck('name', 'id'))
+                        ->disabled(),
+                    Select::make('client_id')
+                        ->label('Client Telephone')
+                        ->options(Client::all()->pluck('telephone', 'id')->map(fn($telephone) => $telephone ?? 'N/A'))
+                        ->disabled(),
+                    Select::make('client_id')
+                        ->label('Client Email')
+                        ->options(Client::all()->pluck('email', 'id')->map(fn($email) => $email ?? 'N/A'))
+                        ->disabled(),
+                    Select::make('user_id')->label('Created By User')->options(User::all()->pluck('name', 'id')->lazy())->disabled()->columnSpan(2),
+                    Select::make('assigned_user_id')->label('Assigned User')->options(User::all()->pluck('name', 'id')->lazy())->disabled(),
+                    Select::make('machine_id')->label('Machine')->options(Machine::all()->pluck('name', 'id')->lazy())->disabled()->columnSpan(2),
+                    Select::make('operations')->relationship('operations', 'name')->label('Operation')->options(Operation::all()->pluck('name', 'id')->lazy())->multiple()->disabled(),
+                    DateTimePicker::make('start_time')->label('Date and Start Time')->format('D, d M Y H:i')->disabled(),
+                    TimePicker::make('end_time')->time('H:i')->disabled(),
+                    TimePicker::make('break_time')->time('H:i')->disabled()
+                ])->columns(3)->columnSpan(2),
+            ]);
     }
 
     public function getSchema(?string $model = null): ?array
