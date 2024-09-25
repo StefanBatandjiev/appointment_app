@@ -96,8 +96,8 @@ class CalendarWidget extends BaseCalendarWidget
                         })
                         ->textColor('#314155')
                         ->extendedProps([
-                            'client' => $reservation->client->name,
-                            'assigned_user' => $reservation->assigned_user->name,
+                            'client' => $reservation->client->name ?? 'N/A',
+                            'assigned_user' => $reservation->assigned_user->name ?? 'N/A',
                             'total_price' => $reservation->getTotalPriceAttribute(),
                             'status' => $reservation->getReservationStatusAttribute(),
                             'icon' => match ($reservation->getReservationStatusAttribute()) {
