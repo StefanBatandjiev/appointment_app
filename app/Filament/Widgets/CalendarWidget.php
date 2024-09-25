@@ -389,8 +389,6 @@ class CalendarWidget extends BaseCalendarWidget
                                     time_nanosleep(1, 0);
                                     $this->refreshRecords();
 
-                                    $this->closeActionModal();
-
                                     Notification::make()
                                         ->title('Finished Reservation')
                                         ->success()
