@@ -12,9 +12,9 @@ class Reservation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status'];
+    protected $fillable = ['user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status', 'reminder_notification', 'pending_finish_notification'];
 
-    protected $dates = ['start_time', 'end_time' . 'break_time'];
+    protected $dates = ['start_time', 'end_time', 'break_time'];
 
     protected $casts = ['status' => ReservationStatus::class];
 
@@ -25,7 +25,7 @@ class Reservation extends Model
 
     public function getReservationStatusAttribute()
     {
-        $currentDate = now()->timezone('GMT+2');
+        $currentDate = now();
 
         if ($this->status === ReservationStatus::CANCELED || $this->status === ReservationStatus::FINISHED) {
             return $this->status;

@@ -22,7 +22,7 @@ class ListReservations extends ListRecords
 
     public function getTabs(): array
     {
-        $currentDate = now()->timezone('GMT+2');
+        $currentDate = now();
 
         $baseQuery = $this->getModel()::query()
             ->where('status', '!=', ReservationStatus::CANCELED);

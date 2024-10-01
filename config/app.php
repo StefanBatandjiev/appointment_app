@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'GMT+2'),
+    'timezone' => env('APP_TIMEZONE', 'Europe/Skopje'),
 
     /*
     |--------------------------------------------------------------------------

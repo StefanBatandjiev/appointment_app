@@ -269,7 +269,7 @@ class ReservationService
     public static function getAvailableTimesForDate(int $machine_id, string $date, int $reservationId = null): array
     {
         $date = Carbon::parse($date);
-        $currentDate = now()->timezone('GMT+2');
+        $currentDate = now();
         $startPeriod = $date->copy()->setTime(8, 0);
         $endPeriod = $date->copy()->setTime(20, 0);
 
@@ -372,7 +372,13 @@ class ReservationService
                 ->orderBy('start_time')
                 ->first();
 
-            $maxDuration = $nextReservation ? $start_time->diffInMinutes($nextReservation->start_time) : 180;
+            if ($nextReservation) {
+                $maxDuration = $start_time->diffInMinutes($nextReservation->start_time);
+            } elseif ($start_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
+                $maxDuration = $start_time->diffInMinutes($date->copy()->setTime(20, 0), false);
+            } else {
+                $maxDuration = 180;
+            }
         } else {
             $maxDuration = 180;
         }
@@ -407,7 +413,14 @@ class ReservationService
 
             $end_time = $start_time->addMinutes((int)$duration);
 
-            $maxDuration = $nextReservation ? $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time)) : 180;
+            if ($nextReservation) {
+                $maxDuration = $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time));
+            } elseif ($end_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
+                $maxDuration = $end_time->diffInMinutes($date->copy()->setTime(20, 0), false);
+            } else {
+                $maxDuration = 180;
+            }
+
         } else {
             $maxDuration = 180;
         }

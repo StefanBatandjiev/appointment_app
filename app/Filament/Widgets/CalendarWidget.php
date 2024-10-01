@@ -9,6 +9,7 @@ use App\Models\Operation;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Services\ReservationService;
+use Carbon\Carbon;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Actions;
@@ -87,8 +88,8 @@ class CalendarWidget extends BaseCalendarWidget
                     $events[] = Event::make($reservation)
                         ->resourceId($reservation->machine->id)
                         ->title($operationNames)
-                        ->start($reservation->start_time)
-                        ->end($reservation->end_time)
+                        ->start(Carbon::parse($reservation->start_time)->addHours(2))
+                        ->end(Carbon::parse($reservation->end_time)->addHours(2))
                         ->backgroundColor(match ($reservation->getReservationStatusAttribute()) {
                             ReservationStatus::FINISHED => '#bbcafc',
                             ReservationStatus::PENDING_FINISH => '#e1e2e3',
@@ -115,8 +116,8 @@ class CalendarWidget extends BaseCalendarWidget
                     $events[] = Event::make($reservation)
                         ->resourceId($reservation->machine->id)
                         ->title('Break Time')
-                        ->start($reservation->end_time)
-                        ->end($reservation->break_time)
+                        ->start(Carbon::parse($reservation->end_time)->addHours(2))
+                        ->end(Carbon::parse($reservation->break_time)->addHours(2))
                         ->backgroundColor($reservation->status === ReservationStatus::FINISHED ? '#f7d0e0' : '#FF7F7F')
                         ->textColor('#000000');
                 }
@@ -531,7 +532,7 @@ class CalendarWidget extends BaseCalendarWidget
     }
     public function authorize($ability, $arguments = [])
     {
-        if (($arguments[0]['status'] === ReservationStatus::FINISHED || $arguments[0]['end_time'] <= now()->timezone('GMT+2'))  && ($ability === 'delete' || $ability === 'EditReservation')) {
+        if (($arguments[0]['status'] === ReservationStatus::FINISHED || $arguments[0]['end_time'] <= now())  && ($ability === 'delete' || $ability === 'EditReservation')) {
             $this->cachedContextMenuActions['eventClick'][2]->hidden(true);
             $this->cachedContextMenuActions['eventClick'][2]->disabled(true);
             $this->cachedContextMenuActions['eventClick'][2]->visible(false);

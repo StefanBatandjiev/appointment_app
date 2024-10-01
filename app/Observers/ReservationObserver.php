@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Reservation;
+use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 
@@ -16,6 +17,11 @@ class ReservationObserver
         Notification::make()
             ->title("You have been assigned to a reservation!")
             ->body("Reservation scheduled at: " . $reservation->start_time)
+            ->actions([
+                Action::make('edit')
+                ->button()
+                    ->url('/admin/reservations/' . $reservation->id . '/edit')
+            ])
             ->success()
             ->sendToDatabase($reservation->assigned_user);
 
