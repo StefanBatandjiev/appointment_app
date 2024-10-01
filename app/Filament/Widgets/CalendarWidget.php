@@ -529,16 +529,17 @@ class CalendarWidget extends BaseCalendarWidget
                 ->disabled(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
         ];
     }
-
     public function authorize($ability, $arguments = [])
     {
         if (($arguments[0]['status'] === ReservationStatus::FINISHED || $arguments[0]['end_time'] <= now()->timezone('GMT+2'))  && ($ability === 'delete' || $ability === 'EditReservation')) {
             $this->cachedContextMenuActions['eventClick'][2]->hidden(true);
             $this->cachedContextMenuActions['eventClick'][2]->disabled(true);
             $this->cachedContextMenuActions['eventClick'][2]->visible(false);
-            $this->cachedContextMenuActions['eventClick'][1]->hidden(true);
-            $this->cachedContextMenuActions['eventClick'][1]->disabled(true);
-            $this->cachedContextMenuActions['eventClick'][1]->visible(false);
+           if ($arguments[0]['status'] === ReservationStatus::FINISHED) {
+               $this->cachedContextMenuActions['eventClick'][1]->hidden(true);
+               $this->cachedContextMenuActions['eventClick'][1]->disabled(true);
+               $this->cachedContextMenuActions['eventClick'][1]->visible(false);
+           }
         }
         return true;
     }
