@@ -4,13 +4,11 @@ namespace App\Console\Commands;
 
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
-use App\Notifications\StatusNotification;
 use Carbon\Carbon;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class SendReservationNotifications extends Command
 {
@@ -40,7 +38,7 @@ class SendReservationNotifications extends Command
 
     protected function notifyAboutUpcomingReservations()
     {
-        $reservations = Reservation::query()
+        Reservation::query()
             ->where('start_time', '>=', now())
             ->where('start_time', '<=', now()->addMinutes(15))
             ->where('reminder_notification', false)
