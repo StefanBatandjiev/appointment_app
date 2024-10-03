@@ -39,17 +39,13 @@ class SendReservationNotifications extends Command
     protected function notifyAboutUpcomingReservations()
     {
         Reservation::query()
-            ->where('start_time', '>=', now())
-            ->where('start_time', '<=', now()->addMinutes(15))
-            ->where('reminder_notification', false)
+            ->where('start_time', '>=', now()->addMinutes(15))
+            ->where('start_time', '<=', now()->addMinutes(16))
             ->cursor()
             ->each(function ($reservation) {
-                $minutes = round(now()->diffInMinutes(Carbon::parse($reservation->start_time)));
-
-                $reservation->update(['reminder_notification' => true]);
 
                 Notification::make()
-                    ->title("Reservation on " . $reservation->machine->name  ." starts in " . $minutes  . " minutes!")
+                    ->title("Reservation on " . $reservation->machine->name  ." starts in 15 minutes!")
                     ->body("Reservation scheduled at: " . $reservation->start_time)
                     ->actions([
                         Action::make('view')
@@ -70,12 +66,12 @@ class SendReservationNotifications extends Command
 
     protected function notifyAboutFinishedReservations()
     {
-        Reservation::query()->where('end_time', '<=', now())
+        Reservation::query()
+            ->where('end_time', '<=', now()->addMinute())
+            ->where('end_time', '>=', now())
             ->where('status', '=', ReservationStatus::SCHEDULED)
-            ->where('pending_finish_notification', false)
             ->cursor()
             ->each(function ($reservation) {
-                $reservation->update(['pending_finish_notification' => true]);
 
                 Notification::make()
                     ->title("Reservation on " . $reservation->machine->name  ." is pending to be finished!")
