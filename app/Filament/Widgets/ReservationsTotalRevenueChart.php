@@ -19,7 +19,7 @@ class ReservationsTotalRevenueChart extends ChartWidget
 
         $reservations = Reservation::query()
             ->whereYear('created_at', $currentYear)
-            ->where('status', '!=', ReservationStatus::CANCELED)
+            ->where('status', '=', ReservationStatus::FINISHED)
             ->get();
 
         foreach ($reservations as $reservation) {

@@ -1,4 +1,5 @@
-import preset from '../../../../vendor/filament/filament/tailwind.config.preset'
+import preset from '../../../../vendor/filament/filament/tailwind.config.preset';
+import colors from 'tailwindcss/colors';
 
 export default {
     presets: [preset],
@@ -8,4 +9,10 @@ export default {
         './vendor/filament/**/*.blade.php',
         './vendor/guava/calendar/resources/**/*.blade.php',
     ],
-}
+    theme: {
+        extend: {
+            textColor: colors,
+        },
+    },
+    plugins: [],
+};

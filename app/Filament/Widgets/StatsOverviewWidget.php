@@ -27,7 +27,7 @@ class StatsOverviewWidget extends BaseWidget
         $revenueThisMonth = Reservation::query()
             ->where('start_time', '>=', $startDateThisMonth)
             ->where('end_time', '<=', $endDateThisMonth)
-            ->where('status', '!=', ReservationStatus::CANCELED)
+            ->where('status', '=', ReservationStatus::FINISHED)
             ->get()
             ->sum('total_price');
 
@@ -44,7 +44,7 @@ class StatsOverviewWidget extends BaseWidget
         $revenueLastMonth = Reservation::query()
             ->where('start_time', '>=', $startDateLastMonth)
             ->where('end_time', '<=', $endDateLastMonth)
-            ->where('status', '!=', ReservationStatus::CANCELED)
+            ->where('status', '=', ReservationStatus::FINISHED)
             ->get()
             ->sum('total_price');
 
@@ -66,31 +66,21 @@ class StatsOverviewWidget extends BaseWidget
 
         $thisMonthChartData = $this->getChartData($startDateThisMonth);
 
-        $formatNumber = function (int $number): string {
-            if ($number < 1000) {
-                return (string) number_format($number, 0);
-            } elseif ($number < 1000000) {
-                return number_format($number / 1000, 2) . 'k';
-            } else {
-                return number_format($number / 1000000, 2) . 'm';
-            }
-        };
-
         return [
-            Stat::make('Revenue', '$' . $formatNumber($revenueThisMonth))
-                ->description(($revenueChange >= 0 ? '+' : '') . $formatNumber($revenueChange) . ' from last month')
+            Stat::make('Revenue', formatNumber($revenueThisMonth) . ' MKD')
+                ->description(($revenueChange >= 0 ? '+' : '') . formatNumber($revenueChange) . ' from last month')
                 ->descriptionIcon($revenueChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->chart($thisMonthChartData['revenue'])
                 ->color($revenueChange >= 0 ? 'primary' : 'danger'),
 
-            Stat::make('New clients', $formatNumber($newClientsThisMonth))
-                ->description(($clientsChange >= 0 ? '+' : '') . $formatNumber($clientsChange) . ' from last month')
+            Stat::make('New clients', formatNumber($newClientsThisMonth))
+                ->description(($clientsChange >= 0 ? '+' : '') . formatNumber($clientsChange) . ' from last month')
                 ->descriptionIcon($clientsChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->chart($thisMonthChartData['new_clients'])
                 ->color($clientsChange >= 0 ? 'primary' : 'danger'),
 
-            Stat::make('New reservations', $formatNumber($newReservationsThisMonth))
-                ->description(($reservationsChange >= 0 ? '+' : '') . $formatNumber($reservationsChange) . ' from last month')
+            Stat::make('New reservations', formatNumber($newReservationsThisMonth))
+                ->description(($reservationsChange >= 0 ? '+' : '') . formatNumber($reservationsChange) . ' from last month')
                 ->descriptionIcon($reservationsChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->chart($thisMonthChartData['new_reservations'])
                 ->color($reservationsChange >= 0 ? 'primary' : 'danger'),

@@ -9,6 +9,7 @@
         "bezhansalleh/filament-language-switch": "^3.1",
         "filament/filament": "^3.2",
         "filament/notifications": "^3.2",
+        "filament/spatie-laravel-settings-plugin": "^3.2",
         "guava/calendar": "^1.6",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",
@@ -27,7 +28,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Helpers/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
