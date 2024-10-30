@@ -9,6 +9,10 @@ use App\Filament\Widgets\UpcomingReservations;
 
 class Dashboard extends \Filament\Pages\Dashboard
 {
+    public static function getNavigationLabel(): string
+    {
+        return __('Dashboard');
+    }
 
     protected static string $view = 'filament.pages.dashboard';
     protected function getFooterWidgets(): array

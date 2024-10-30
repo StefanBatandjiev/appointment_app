@@ -14,6 +14,11 @@ class Settings extends SettingsPage
 
     protected static string $settings = CalendarSettings::class;
 
+    public static function getNavigationLabel(): string
+    {
+        return __('Settings');
+    }
+
     public function form(Form $form): Form
     {
         return $form

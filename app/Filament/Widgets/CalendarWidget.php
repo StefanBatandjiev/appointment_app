@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\ReservationStatus;
 use App\Filament\Components\ViewReservationForm;
+use App\Filament\Resources\ReservationResource\Components\EditReservationForm;
 use App\Models\Client;
 use App\Models\Machine;
 use App\Models\Operation;
@@ -41,7 +42,9 @@ use Guava\Calendar\Widgets\CalendarWidget as BaseCalendarWidget;
 
 class CalendarWidget extends BaseCalendarWidget
 {
-    protected string $calendarView = 'resourceTimeGridDay';
+    protected string $calendarView = 'timeGridDay';
+
+    public ?string $selectedMachine = null;
 
     protected string|Closure|HtmlString|null $heading = 'Reservation Calendar';
     protected bool $eventClickEnabled = true;
@@ -50,9 +53,8 @@ class CalendarWidget extends BaseCalendarWidget
     public function onDateClick(array $info = []): void
     {
         $this->setOption('date', $info['dateStr']);
-        $this->setOption('view', 'resourceTimeGridDay');
+        $this->setOption('view', 'timeGridDay');
     }
-
     public function getOptions(): array
     {
         return [
@@ -64,12 +66,12 @@ class CalendarWidget extends BaseCalendarWidget
             'datesAboveResources' => true,
             'buttonText' => [
                 'dayGridMonth' => 'Month',
-                'resourceTimeGridWeek' => 'Week',
-                'resourceTimeGridDay' => 'Day',
+                'timeGridWeek' => 'Week',
+                'timeGridDay' => 'Day',
                 'today' => 'Today'
             ],
             'headerToolbar' => [
-                'start' => 'resourceTimeGridDay, resourceTimeGridWeek, dayGridMonth',
+                'start' => 'timeGridDay, timeGridWeek, dayGridMonth',
                 'center' => 'title',
                 'end' => 'prev, today, next',
             ]
@@ -82,6 +84,7 @@ class CalendarWidget extends BaseCalendarWidget
             ->with('operations')
             ->where('start_time', '>=', $fetchInfo['start'])
             ->where('end_time', '<=', $fetchInfo['end'])
+            ->where('machine_id', $this->selectedMachine)
             ->get()
             ->flatMap(function (Reservation $reservation) {
 
@@ -91,7 +94,7 @@ class CalendarWidget extends BaseCalendarWidget
 
                 if ($reservation->status !== ReservationStatus::CANCELED) {
                     $events[] = Event::make($reservation)
-                        ->resourceId($reservation->machine->id)
+//                        ->resourceId($reservation->machine->id)
                         ->title($operationNames)
                         ->start(Carbon::parse($reservation->start_time)->addHours(2))
                         ->end(Carbon::parse($reservation->end_time)->addHours(2))
@@ -119,7 +122,7 @@ class CalendarWidget extends BaseCalendarWidget
 
                 if ($reservation->break_time && $reservation->status !== ReservationStatus::CANCELED) {
                     $events[] = Event::make($reservation)
-                        ->resourceId($reservation->machine->id)
+//                        ->resourceId($reservation->machine->id)
                         ->title('Break Time')
                         ->start(Carbon::parse($reservation->end_time)->addHours(2))
                         ->end(Carbon::parse($reservation->break_time)->addHours(2))
@@ -136,29 +139,17 @@ class CalendarWidget extends BaseCalendarWidget
         return view('components.calendar.events.event');
     }
 
-    public function getResources(): Collection|array
-    {
-        return Machine::query()
-            ->get()
-            ->map(function (Machine $machine) {
-                return Resource::make($machine->id)
-                    ->title($machine->name)
-                    ->toArray();
-            })
-            ->toArray();
-    }
-
-//    public function onEventClick(array $info = [], ?string $action = null): void
+//    public function getResources(): Collection|array
 //    {
-//        $status = data_get($info, 'event.extendedProps.status');
-//
-//
-//        if ($status === ReservationStatus::FINISHED) {
-//            $this->defaultEventClickAction = 'ViewReservation';
-//        }
-//
+//        return Machine::query()
+//            ->get()
+//            ->map(function (Machine $machine) {
+//                return Resource::make($machine->id)
+//                    ->title($machine->name)
+//                    ->toArray();
+//            })
+//            ->toArray();
 //    }
-
     public function getEventClickContextMenuActions(): array
     {
         return [
@@ -181,6 +172,8 @@ class CalendarWidget extends BaseCalendarWidget
                         ->searchable()
                         ->required()
                         ->live()
+                        ->suffixIcon('heroicon-o-user')
+                        ->suffixIconColor('primary')
                         ->createOptionForm([
                             TextInput::make('name')->label('Name')->required(),
                             TextInput::make('email')->label('Email')->required()->email()->unique(Client::class, 'email'),
@@ -193,24 +186,40 @@ class CalendarWidget extends BaseCalendarWidget
 
                     Repeater::make('reservations')
                         ->label('')
+                        ->columns(3)
                         ->schema(function () {
 
                             return [
                                 Select::make('machine_id')
                                     ->label('Machine')
                                     ->options(Machine::all()->pluck('name', 'id'))
+                                    ->suffixIcon('heroicon-o-cog')
+                                    ->suffixIconColor('primary')
+                                    ->columnSpan(2)
                                     ->required()
+                                    ->afterStateUpdated(function (callable $set) {
+                                        $set('operations', null);
+                                        $set('date', null);
+                                        $set('start_time', null);
+                                        $set('duration', null);
+                                        $set('break', null);
+                                    })
                                     ->reactive()
                                     ->live(),
                                 Select::make('assigned_user_id')
                                     ->label('Assigned User')
                                     ->options(User::all()->pluck('name', 'id'))
                                     ->nullable()
+                                    ->suffixIcon('heroicon-o-user')
+                                    ->suffixIconColor('primary')
                                     ->searchable(),
                                 Select::make('operations')
                                     ->label('Operations')
                                     ->multiple()
                                     ->searchable()
+                                    ->suffixIcon('heroicon-o-queue-list')
+                                    ->suffixIconColor('primary')
+                                    ->columnSpan(3)
                                     ->required()
                                     ->hidden(fn(Get $get) => !$get('machine_id'))
                                     ->options(
@@ -240,11 +249,16 @@ class CalendarWidget extends BaseCalendarWidget
                                     ->minDate(now()->format('Y-m-d'))
                                     ->maxDate(now()->addMonths(2)->format('Y-m-d'))
                                     ->hidden(fn(Get $get) => !$get('operations'))
+                                    ->suffixIcon('heroicon-o-calendar-date-range')
+                                    ->suffixIconColor('primary')
+                                    ->columnSpan(2)
                                     ->required()
                                     ->live(),
                                 Select::make('start_time')
                                     ->options(fn(Get $get) => ReservationService::getAvailableTimesForDate($get('machine_id'), $get('date')))
                                     ->hidden(fn(Get $get) => !$get('date'))
+                                    ->suffixIcon('heroicon-o-clock')
+                                    ->suffixIconColor('primary')
                                     ->required()
                                     ->searchable()
                                     ->live(),
@@ -253,6 +267,8 @@ class CalendarWidget extends BaseCalendarWidget
                                     ->options(fn(Get $get) => ReservationService::getDurations($get('machine_id'), $get('date') ?? '', $get('start_time') ?? ''))
                                     ->helperText(fn(Get $get) => ReservationService::getNextReservationStartTime($get('machine_id'), $get('date') ?? '', $get('start_time') ?? ''))
                                     ->hidden(fn(Get $get) => !$get('start_time'))
+                                    ->suffixIcon('heroicon-o-clock')
+                                    ->suffixIconColor('primary')
                                     ->required()
                                     ->live(),
                                 Select::make('break')
@@ -260,6 +276,8 @@ class CalendarWidget extends BaseCalendarWidget
                                     ->options(fn(Get $get) => ReservationService::getAvailableBreakDurations($get('machine_id'), $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
                                     ->helperText('You can add a break time after the reservation')
                                     ->hidden(fn(Get $get) => !$get('duration'))
+                                    ->suffixIcon('heroicon-o-clock')
+                                    ->suffixIconColor('primary')
                                     ->disabled(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id'), $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
                             ];
                         })
@@ -308,7 +326,7 @@ class CalendarWidget extends BaseCalendarWidget
     {
         return EditAction::make('EditReservation')
             ->model(Reservation::class)
-            ->form(ReservationService::editForm())
+            ->form(EditReservationForm::form())
             ->action(function (array $data) {
                 $data = ReservationService::editAction($data);
 

@@ -15,6 +15,7 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -51,109 +52,6 @@ class ReservationService
         return $data;
     }
 
-    public static function createForm(): array
-    {
-        return [
-            Select::make('client_id')
-                ->label('Client')
-                ->options(Client::all()->pluck('name', 'id'))
-                ->searchable()
-                ->required()
-                ->createOptionForm([
-                    TextInput::make('name')
-                        ->label('Name')
-                        ->required(),
-                    TextInput::make('email')
-                        ->label('Email')
-                        ->required()
-                        ->email()
-                        ->unique(Client::class, 'email'),
-                    TextInput::make('telephone')
-                        ->label('Telephone')
-                        ->unique(Client::class, 'telephone')
-                        ->nullable(),
-                ])
-                ->createOptionUsing(function (array $data): int {
-                    $client = Client::query()->create([
-                        'name' => $data['name'],
-                        'email' => $data['email'],
-                        'telephone' => $data['telephone'],
-                    ]);
-
-                    return $client->id;
-                }),
-            Select::make('machine_id')
-                ->label('Machine')
-                ->options(Machine::all()->pluck('name', 'id'))
-                ->required()
-                ->live()
-                ->reactive()
-                ->afterStateUpdated(function (callable $set) {
-                    $set('date', null);
-                    $set('start_time', null);
-                    $set('duration', null);
-                    $set('break', null);
-                }),
-            Select::make('assigned_user_id')
-                ->label('Assigned User')
-                ->options(User::all()->pluck('name', 'id'))
-                ->nullable()
-                ->searchable(),
-            Select::make('operations')
-                ->relationship('operations', 'name')
-                ->label('Operations')
-                ->multiple()
-                ->searchable()
-                ->required()
-                ->hidden(fn(Get $get) => !$get('machine_id'))
-                ->options(
-                    fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
-                        $query->where('machine_id', $get('machine_id'));
-                    })->pluck('name', 'id')
-                )
-                ->createOptionForm([
-                    TextInput::make('name')->required(),
-                    TextInput::make('description'),
-                    TextInput::make('price')->numeric()->required(),
-                    ColorPicker::make('color')->required()
-                ])
-                ->createOptionUsing(function (array $data): int {
-                    $operation = Operation::query()->create([
-                        'name' => $data['name'],
-                        'description' => $data['description'],
-                        'color' => $data['color'],
-                        'price' => $data['price'],
-                    ]);
-
-                    return $operation->id;
-                })->live(),
-            DatePicker::make('date')
-                ->minDate(now()->format('Y-m-d'))
-                ->maxDate(now()->addMonths(2)->format('Y-m-d'))
-                ->hidden(fn(Get $get) => !$get('operations'))
-                ->required()
-                ->live(),
-            Select::make('start_time')
-                ->options(fn(Get $get) => self::getAvailableTimesForDate($get('machine_id'), $get('date')))
-                ->hidden(fn(Get $get) => !$get('date'))
-                ->required()
-                ->searchable()
-                ->live(),
-            Select::make('duration')
-                ->label('Duration')
-                ->options(fn(Get $get) => self::getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? ''))
-                ->helperText(fn(Get $get) => self::getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? ''))
-                ->hidden(fn(Get $get) => !$get('start_time'))
-                ->required()
-                ->live(),
-            Select::make('break')
-                ->label('Break Time')
-                ->options(fn(Get $get) => self::getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
-                ->helperText('You can add a break time after the reservation')
-                ->hidden(fn(Get $get) => !$get('duration'))
-                ->disabled(fn(Get $get) => self::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))];
-    }
-
     public static function editAction(array $data): array
     {
         $data['user_id'] = auth()->id();
@@ -172,6 +70,8 @@ class ReservationService
 
             if (isset($data['break'])) {
                 $data['break_time'] = (clone $data['end_time'])->addMinutes((int)$data['break']);
+            } else {
+                $data['break_time'] = null;
             }
         }
 
@@ -182,90 +82,6 @@ class ReservationService
 
         return $data;
     }
-
-    public static function editForm(): array
-    {
-        return [
-            Section::make()->schema([
-                Select::make('client_id')
-                    ->label('Client')
-                    ->options(Client::all()->pluck('name', 'id'))
-                    ->disabled(),
-                Select::make('machine_id')
-                    ->label('Machine')
-                    ->options(Machine::all()->pluck('name', 'id'))
-                    ->disabled(),
-                Select::make('user_id')
-                    ->label('Created By User')
-                    ->options(User::all()->pluck('name', 'id'))
-                    ->disabled(),
-                Select::make('assigned_user_id')
-                    ->label('Assigned User')
-                    ->options(User::all()->pluck('name', 'id'))
-                    ->nullable()
-                    ->searchable(),
-                Select::make('operations')
-                    ->relationship('operations', 'name')
-                    ->label('Operations')
-                    ->options(
-                        fn(Get $get) => Operation::query()->whereHas('machines', function ($query) use ($get) {
-                            $query->where('machine_id', $get('machine_id'));
-                        })->pluck('name', 'id')
-                    )
-                    ->multiple()
-                    ->searchable()
-                    ->required()
-                    ->createOptionForm([
-                        TextInput::make('name')->required(),
-                        TextInput::make('description'),
-                        TextInput::make('price')->numeric()->required(),
-                        ColorPicker::make('color')->required()
-                    ])
-                    ->createOptionUsing(function (array $data): int {
-                        $operation = Operation::query()->create([
-                            'name' => $data['name'],
-                            'description' => $data['description'],
-                            'color' => $data['color'],
-                            'price' => $data['price'],
-                        ]);
-
-                        return $operation->id;
-                    })->columnSpan(2),
-                Section::make()->schema([
-                    TextInput::make('start_time')->disabled(),
-                    TextInput::make('end_time')->disabled(),
-                    TextInput::make('break_time')->disabled(),
-                ])->columns(3)->columnSpan(2)
-            ])->columns(2),
-
-
-            Section::make('Change the reservation time')->schema([
-                DatePicker::make('date')
-                    ->minDate(now()->format('Y-m-d'))
-                    ->maxDate(now()->addMonths(2)->format('Y-m-d'))
-                    ->live(),
-                Select::make('start')
-                    ->options(fn(Get $get) => self::getAvailableTimesForDate($get('machine_id'), $get('date'), $get('id')))
-                    ->hidden(fn(Get $get) => !$get('date'))
-                    ->required()
-                    ->searchable()
-                    ->live(),
-                Select::make('duration')
-                    ->label('Duration')
-                    ->options(fn(Get $get) => self::getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                    ->helperText(fn(Get $get) => self::getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                    ->hidden(fn(Get $get) => !$get('start'))
-                    ->required()
-                    ->live(),
-                Select::make('break')
-                    ->label('Break Time')
-                    ->options(fn(Get $get) => self::getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
-                    ->helperText('You can add a break time after the reservation')
-                    ->hidden(fn(Get $get) => !$get('duration'))
-                    ->disabled(fn(Get $get) => self::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
-            ])];
-    }
-
     public static function getAvailableTimesForDate(int $machine_id, string $date, int $reservationId = null): array
     {
         $date = Carbon::parse($date);
@@ -343,7 +159,9 @@ class ReservationService
         [$hour, $minute] = explode(':', $start_time);
         $start_time = $date->setTime((int)$hour, (int)$minute);
 
-        return Reservation::query()->where('machine_id', $machine_id)
+        return Reservation::query()
+            ->where('status', '!=', ReservationStatus::CANCELED)
+            ->where('machine_id', $machine_id)
             ->where('start_time', '>', $start_time)
             ->orderBy('start_time')
             ->first();
@@ -354,7 +172,7 @@ class ReservationService
         $nextReservation = self::getNextReservation($machine_id, $date, $start_time);
 
         if ($nextReservation) {
-            return 'Next reservation starts at ' . Carbon::parse($nextReservation->start_time)->toDateTimeString();
+            return 'Next reservation is at ' . Carbon::parse($nextReservation->start_time)->toDateTimeString();
         }
 
         return 'No upcoming reservations';
@@ -372,7 +190,7 @@ class ReservationService
                 ->orderBy('start_time')
                 ->first();
 
-            if ($nextReservation) {
+            if ($nextReservation && $start_time->diffInMinutes($nextReservation->start_time) < 180) {
                 $maxDuration = $start_time->diffInMinutes($nextReservation->start_time);
             } elseif ($start_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
                 $maxDuration = $start_time->diffInMinutes($date->copy()->setTime(20, 0), false);
@@ -413,7 +231,7 @@ class ReservationService
 
             $end_time = $start_time->addMinutes((int)$duration);
 
-            if ($nextReservation) {
+            if ($nextReservation && $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time)) < 180) {
                 $maxDuration = $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time));
             } elseif ($end_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
                 $maxDuration = $end_time->diffInMinutes($date->copy()->setTime(20, 0), false);

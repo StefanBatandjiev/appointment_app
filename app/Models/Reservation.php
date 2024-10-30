@@ -3,16 +3,27 @@
 namespace App\Models;
 
 use App\Enums\ReservationStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Translatable\HasTranslations;
 
 class Reservation extends Model
 {
     use HasFactory;
+    use HasTranslations;
 
-    protected $fillable = ['user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status', 'reminder_notification', 'pending_finish_notification'];
+    public $translatable = [
+        'start_time',
+        'end_time',
+        'break_time',
+        'status'
+    ];
+
+
+    protected $fillable = ['user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status'];
 
     protected $dates = ['start_time', 'end_time', 'break_time'];
 
@@ -27,15 +38,18 @@ class Reservation extends Model
     {
         $currentDate = now();
 
+        $start_time = Carbon::parse($this->start_time);
+        $end_time = Carbon::parse($this->end_time);
+
         if ($this->status === ReservationStatus::CANCELED || $this->status === ReservationStatus::FINISHED) {
             return $this->status;
         }
 
-        if ($currentDate->between($this->start_time, $this->end_time)) {
+        if ($currentDate->between($start_time, $end_time)) {
             return ReservationStatus::ONGOING;
-        } elseif ($currentDate->lessThan($this->start_time)) {
+        } elseif ($currentDate->lessThan($start_time)) {
             return ReservationStatus::SCHEDULED;
-        } elseif ($currentDate->greaterThan($this->end_time)) {
+        } elseif ($currentDate->greaterThan($end_time)) {
             return ReservationStatus::PENDING_FINISH;
         }
 

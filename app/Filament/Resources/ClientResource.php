@@ -19,12 +19,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\HtmlString;
 
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
-    protected static ?string $navigationGroup = 'Reservation Management';
-
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
@@ -93,9 +92,41 @@ class ClientResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name'),
-                TextColumn::make('email'),
-                TextColumn::make('telephone'),
+                TextColumn::make('name')
+                    ->label(__('Name and Last Name'))
+                    ->state(function (Client $client) {
+                        $userSvg = svg('heroicon-o-user', 'w-5 h-5 mx-1')->toHtml();
+
+                        return new HtmlString("
+                            <div class=\"flex flex-row\">
+                                {$userSvg}<span class=\"text-sm text-gray-700 mx-1 font-semibold\">{$client->name}</span>
+                             </div>
+                        ");
+                    }),
+                TextColumn::make('email')
+                    ->translateLabel()
+                    ->state(function (Client $client) {
+                        $emailSvg = svg('heroicon-o-envelope', 'w-5 h-5 mx-1')->toHtml();
+                        $email = $client->email ?? 'N/A';
+
+                        return new HtmlString("
+                            <div class=\"flex flex-row\">
+                                {$emailSvg}<span class=\"text-sm text-gray-700 mx-1 font-semibold\">{$email}</span>
+                             </div>
+                        ");
+                    }),
+                TextColumn::make('telephone')
+                    ->translateLabel()
+                    ->state(function (Client $client) {
+                        $telephoneSvg = svg('heroicon-o-phone', 'w-5 h-5 mx-1')->toHtml();
+                        $telephone = $client->telephone ?? 'N/A';
+
+                        return new HtmlString("
+                            <div class=\"flex flex-row\">
+                                {$telephoneSvg}<span class=\"text-sm text-gray-700 mx-1 font-semibold\">{$telephone}</span>
+                             </div>
+                        ");
+                    }),
             ])
             ->filters([
                 //
@@ -129,5 +160,20 @@ class ClientResource extends Resource
             'view' => Pages\ViewClient::route('/{record}'),
             'edit' => Pages\EditClient::route('/{record}/edit'),
         ];
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Reservation Management');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('Client');
+    }
+
+    public static function getPluralLabel(): ?string
+    {
+        return __('Clients');
     }
 }

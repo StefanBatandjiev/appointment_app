@@ -1,14 +1,16 @@
 <div class="py-0.5 px-2" role="region" aria-labelledby="event-details">
 
-    <template x-if="view.type === 'resourceTimeGridWeek' && event.title !== 'Break Time'">
-        <span x-html="event.extendedProps.icon"></span>
+    <template x-if="view.type === 'timeGridWeek' && event.title !== 'Break Time'">
+        <div class="flex flex-col items-center">
+            <span x-html="event.extendedProps.icon"></span>
+        </div>
     </template>
 
     <template x-if="view.type === 'dayGridMonth' && event.title !== 'Break Time'">
         <span x-html="event.extendedProps.icon" class="svg-container"></span>
     </template>
 
-    <template x-if="view.type === 'resourceTimeGridDay'">
+    <template x-if="view.type === 'timeGridDay'">
         <div class="flex flex-col flex-wrap" id="event-details">
             <div class="flex flex-row justify-between">
                 <div class="flex flex-col items-start">

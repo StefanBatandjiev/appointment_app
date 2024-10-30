@@ -9,6 +9,7 @@ use App\Models\Operation;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Services\ReservationService;
+use Carbon\Carbon;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\HtmlString;
@@ -30,8 +32,9 @@ class EditReservationForm
         return [
             Section::make('Reservation Editing Options')
                 ->description(fn(Reservation $reservation) => match ($reservation->getReservationStatusAttribute()) {
-                    ReservationStatus::PENDING_FINISH => 'You can only edit the assigned user and operations.',
-                    default => 'You can only edit the assigned user, operations, and reservation date and  time.',
+                    ReservationStatus::ONGOING => 'You can change the assigned user, operations and duration of the reservation, and you can add break time after the reservation.',
+                    ReservationStatus::PENDING_FINISH => 'You can change the assigned user, operations and duration of the reservation.',
+                    default => 'You can change the assigned user, operations, and reschedule the reservation.',
                 })
                 ->schema([
                 Select::make('assigned_user_id')
@@ -70,16 +73,28 @@ class EditReservationForm
                         return $operation->id;
                     })->columnSpan(2),
                 DatePicker::make('date')
-                    ->minDate(now()->format('Y-m-d'))
+                    ->minDate(function (Reservation $reservation) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::SCHEDULED) {
+                            return now()->format('Y-m-d');
+                        }
+                        return null;
+                    })
                     ->maxDate(now()->addMonths(2)->format('Y-m-d'))
                     ->columnSpan(3)
                     ->suffixIcon('heroicon-o-calendar-date-range')
                     ->suffixIconColor('primary')
-                    ->hidden(fn(Reservation $reservation) => $reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH)
+                    ->disabled(fn(Reservation $reservation) =>
+                        $reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                        $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING)
+                    ->dehydrated()
                     ->live(),
                 Select::make('start')
                     ->options(fn(Get $get) => ReservationService::getAvailableTimesForDate($get('machine_id'), $get('date'), $get('id')))
                     ->hidden(fn(Get $get) => !$get('date'))
+                    ->disabled(fn(Reservation $reservation) =>
+                        $reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                        $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING)
+                    ->dehydrated()
                     ->required()
                     ->searchable()
                     ->suffixIcon('heroicon-o-clock')
@@ -87,9 +102,40 @@ class EditReservationForm
                     ->live(),
                 Select::make('duration')
                     ->label('Duration')
-                    ->options(fn(Get $get) => ReservationService::getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                    ->helperText(fn(Get $get) => ReservationService::getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? ''))
-                    ->hidden(fn(Get $get) => !$get('start'))
+                    ->options(function (Reservation $reservation, Get $get) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                            $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING) {
+
+                            return ReservationService::getDurations($reservation->machine_id, $reservation->start_time, Carbon::parse($reservation->start_time)->format('H:i'));
+                        }
+
+                        return ReservationService::getDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '');
+                    })
+                    ->helperText(function (Reservation $reservation, Get $get) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                            $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING) {
+
+                            return ReservationService::getNextReservationStartTime($reservation->machine_id, $reservation->start_time, Carbon::parse($reservation->start_time)->format('H:i'));
+                        }
+
+                        return ReservationService::getNextReservationStartTime($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '');
+                    })
+                    ->hidden(function (Reservation $reservation, Get $get) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                            $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING) {
+
+                            return false;
+                        }
+
+                        return !$get('start');
+                    })
+                    ->afterStateHydrated(function (Reservation $reservation, Set $set) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
+                            $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING) {
+                            $set('date', Carbon::parse($reservation->start_time)->format('Y-m-d'));
+                            $set('start', Carbon::parse($reservation->start_time)->format('H:i'));
+                        }
+                    })
                     ->required()
                     ->suffixIcon('heroicon-o-clock')
                     ->suffixIconColor('primary')
@@ -98,7 +144,14 @@ class EditReservationForm
                     ->label('Break Time')
                     ->options(fn(Get $get) => ReservationService::getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
                     ->helperText('You can add a break time after the reservation')
-                    ->hidden(fn(Get $get) => !$get('duration'))
+                    ->hidden(function (Reservation $reservation, Get $get) {
+                        if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH) {
+
+                            return true;
+                        }
+
+                        return !$get('duration');
+                    })
                     ->suffixIcon('heroicon-o-clock')
                     ->suffixIconColor('primary')
                     ->disabled(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))

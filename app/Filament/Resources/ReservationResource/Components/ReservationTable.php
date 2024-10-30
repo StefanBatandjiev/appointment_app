@@ -3,6 +3,7 @@
 namespace App\Filament\Components;
 
 use App\Enums\ReservationStatus;
+use App\Filament\Resources\ReservationResource\Components\EditReservationForm;
 use App\Models\Reservation;
 use App\Services\ReservationService;
 use Carbon\Carbon;
@@ -18,7 +19,7 @@ use Illuminate\Support\HtmlString;
 
 class ReservationTable
 {
-    public static function make(Table $table, $client = false): Table
+    public static function make(Table $table, $client = false, $machine = false): Table
     {
         return $table
             ->recordAction('view')
@@ -44,11 +45,14 @@ class ReservationTable
                         $emailSVG = svg('heroicon-o-envelope', 'w-5 h-5 mx-1')->toHtml();
                         $phoneSVG = svg('heroicon-o-phone', 'w-5 h-5 mx-1')->toHtml();
 
+                        $clientEmail = $reservation->client->email ?? 'N/A';
+                        $clientTelephone = $reservation->client->telephone ?? 'N/A';
+
                         return new HtmlString("
                             <div class=\"flex flex-col\">
                                 <span class=\"text-sm text-gray-700 mx-1 font-semibold\">{$reservation->client->name}</span>
-                                <span class=\"flex text-sm text-gray-500\">{$emailSVG} {$reservation->client->email}</span>
-                                <span class=\"flex text-sm text-gray-500\">{$phoneSVG} {$reservation->client->telephone}</span>
+                                <span class=\"flex text-sm text-gray-500\">{$emailSVG} {$clientEmail}</span>
+                                <span class=\"flex text-sm text-gray-500\">{$phoneSVG} {$clientTelephone}</span>
                              </div>
                         ");
                     })->verticallyAlignStart()->hidden($client),
@@ -72,13 +76,39 @@ class ReservationTable
                                 </span>
                              </div>
                         ");
-                    })->verticallyAlignStart(),
+                    })
+                    ->verticallyAlignStart()
+                    ->hidden($machine),
+                TextColumn::make('operations')
+                    ->label('Operations')
+                    ->state(function (Reservation $reservation) {
+                        $operationsList = $reservation->operations->map(function ($operation) {
+                            return "
+                                <div class=\"flex items-center space-x-2\">
+                                    <div class=\"w-4 h-4 inline-block\" style=\"background-color: {$operation->color};\"></div>
+                                    <span class=\"text-sm text-gray-500\">{$operation->name} - " . number_format($operation->price, 2, '.', ',') . " MKD</span>
+                                </div>
+                            ";
+                        })->join('');
+
+                        return new HtmlString("
+                            <div class=\"flex flex-col\">
+                                <span class=\"flex flex-col text-sm text-gray-500\">
+                                    {$operationsList}
+                                </span>
+                             </div>
+                        ");
+                    })
+                    ->verticallyAlignStart()
+                    ->hidden(!$machine),
                 TextColumn::make('assigned_user.name')
                     ->label('Assigned User')
                     ->state(function (Reservation $reservation) {
+                        $userName = $reservation->assigned_user->name ?? 'N/A';
+
                         return new HtmlString("
                             <div class=\"flex flex-col items-center\">
-                                <span class=\"text-base text-gray-700 font-semibold\">{$reservation->assigned_user->name}</span>
+                                <span class=\"text-base text-gray-700 font-semibold\">{$userName}</span>
                             </div>
                         ");
                     })->alignCenter(),
@@ -103,8 +133,8 @@ class ReservationTable
                         };
 
                         $statusColor = match ($record->getReservationStatusAttribute()) {
-                            ReservationStatus::ONGOING => 'text-warning-500',
-                            ReservationStatus::SCHEDULED => 'text-success-500',
+                            ReservationStatus::ONGOING => 'text-yellow-500',
+                            ReservationStatus::SCHEDULED => 'text-green-600',
                             ReservationStatus::FINISHED => 'text-primary-500',
                             ReservationStatus::CANCELED => 'text-danger-500',
                             ReservationStatus::PENDING_FINISH => 'text-gray-500',
@@ -153,7 +183,7 @@ class ReservationTable
                             )->columns(3)->columnSpan(2)
                         ])->slideOver(),
                     EditAction::make('edit')
-                        ->form(ReservationService::editForm()),
+                        ->form(EditReservationForm::form()),
                     Tables\Actions\DeleteAction::make(),
                 ])
             ]);
