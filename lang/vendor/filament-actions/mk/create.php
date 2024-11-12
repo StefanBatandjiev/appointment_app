@@ -8,16 +8,16 @@ return [
 
         'modal' => [
 
-            'heading' => 'Создај :label',
+            'heading' => 'Креирај :label',
 
             'actions' => [
 
                 'create' => [
-                    'label' => 'Создај',
+                    'label' => 'Креирај',
                 ],
 
                 'create_another' => [
-                    'label' => 'Создај и создај друга',
+                    'label' => 'Креирај и креирај друга',
                 ],
 
             ],
@@ -27,7 +27,7 @@ return [
         'notifications' => [
 
             'created' => [
-                'title' => 'Создадено',
+                'title' => 'Креирано',
             ],
 
         ],

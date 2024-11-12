@@ -219,6 +219,29 @@ class ReservationService
         })->toArray();
     }
 
+//    public static function getDefaultDuration($start_time, $end_time) {
+//        $duration = (string) Carbon::parse($start_time)->diffInMinutes(Carbon::parse($end_time));
+//
+//        $durations = [
+//            '15' => '15 minutes',
+//            '30' => '30 minutes',
+//            '45' => '45 minutes',
+//            '60' => '1 hour',
+//            '75' => '1 hour 15 minutes',
+//            '90' => '1 hour 30 minutes',
+//            '105' => '1 hour 45 minutes',
+//            '120' => '2 hours',
+//            '135' => '2 hours 15 minutes',
+//            '150' => '2 hours 30 minutes',
+//            '165' => '2 hours 45 minutes',
+//            '180' => '3 hours',
+//        ];
+//
+//        return [
+//            $duration => $durations[$duration]
+//        ];
+//    }
+
     public static function getAvailableBreakDurations(int $machine_id, string $date, string $start_time, string $duration): array
     {
         if ($machine_id && $date && $start_time) {

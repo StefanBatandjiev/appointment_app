@@ -10,4 +10,11 @@ return new class extends SettingsMigration
         $this->migrator->add('calendar.slotMaxTime', '20:00:00');
         $this->migrator->add('calendar.slotDuration', '00:15:00');
     }
+
+    public function down(): void
+    {
+        $this->migrator->delete('calendar.slotMinTime');
+        $this->migrator->delete('calendar.slotMaxTime');
+        $this->migrator->delete('calendar.slotDuration');
+    }
 };

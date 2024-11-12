@@ -410,12 +410,12 @@ return [
 
                 'modal' => [
 
-                    'heading' => 'Создај',
+                    'heading' => 'Креирај',
 
                     'actions' => [
 
                         'create' => [
-                            'label' => 'Создај',
+                            'label' => 'Креирај',
                         ],
 
                         'cancel' => [

@@ -109,7 +109,7 @@ return [
 
         'heading' => 'Нема :model',
 
-        'description' => 'Создај :model за да започнеш.',
+        'description' => 'Креирај :model за да започнеш.',
 
     ],
 

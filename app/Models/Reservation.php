@@ -3,27 +3,18 @@
 namespace App\Models;
 
 use App\Enums\ReservationStatus;
+use App\Models\Scopes\TenantScope;
+use App\Traits\FilterByTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Spatie\Translatable\HasTranslations;
 
 class Reservation extends Model
 {
-    use HasFactory;
-    use HasTranslations;
-
-    public $translatable = [
-        'start_time',
-        'end_time',
-        'break_time',
-        'status'
-    ];
-
-
-    protected $fillable = ['user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status'];
+    use HasFactory, FilterByTenant;
+    protected $fillable = ['tenant_id', 'user_id', 'client_id', 'machine_id', 'operation_id', 'assigned_user_id', 'start_time', 'end_time', 'break_time', 'status'];
 
     protected $dates = ['start_time', 'end_time', 'break_time'];
 
@@ -79,5 +70,15 @@ class Reservation extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    protected static function booted()
+    {
+        self::addGlobalScope(new TenantScope);
     }
 }

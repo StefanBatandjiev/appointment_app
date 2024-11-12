@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <label class="fi-fo-field-wrp-label inline-flex items-center" for="machineSelect">
         <span class="text-lg font-semibold text-gray-800 dark:text-white">
-            Select a Machine for the Calendar:
+            {{ __('Select a machine for the calendar:') }}
         </span>
     </label>
     <x-filament::input.wrapper>
@@ -13,7 +13,7 @@
 
     </x-filament::input.wrapper>
 
-    @livewire(\App\Filament\Widgets\CalendarWidget::class,
+    @livewire(\App\Filament\App\Widgets\CalendarWidget::class,
     ['selectedMachine' => $selectedMachine],
     key(str()->random()))
 
