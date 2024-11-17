@@ -17,11 +17,11 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->foreignId('machine_id')->constrained()->onDelete('cascade');
-            $table->foreignId('assigned_user_id')->after('machine_id')->nullable()->constrained('users')->onDelete('cascade');
+            $table->foreignId('assigned_user_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->dateTime('start_time');
             $table->dateTime('end_time');
             $table->dateTime('break_time')->nullable();
-            $table->string('status')->default('Scheduled')->after('break_time')->nullable();
+            $table->string('status')->default('Scheduled')->nullable();
             $table->timestamps();
         });
     }
