@@ -3,28 +3,11 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
-use App\Models\Client;
-use App\Models\Machine;
-use App\Models\Operation;
 use App\Models\Reservation;
-use App\Models\User;
+use App\Settings\CalendarSettings;
+use App\Settings\ReservationSettings;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use Filament\Forms\Components\Actions;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\ColorPicker;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TimePicker;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
 class ReservationService
 {
@@ -86,8 +69,8 @@ class ReservationService
     {
         $date = Carbon::parse($date);
         $currentDate = now();
-        $startPeriod = $date->copy()->setTime(8, 0);
-        $endPeriod = $date->copy()->setTime(20, 0);
+        $startPeriod = $date->copy()->setTimeFrom(app(CalendarSettings::class)->slotMinTime);
+        $endPeriod = $date->copy()->setTimeFrom(app(CalendarSettings::class)->slotMaxTime);
 
         if ($date->isToday() && $currentDate->hour >= 8) {
             $roundedMinutes = ceil($currentDate->minute / 5) * 5;
@@ -172,14 +155,19 @@ class ReservationService
         $nextReservation = self::getNextReservation($machine_id, $date, $start_time);
 
         if ($nextReservation) {
-            return 'Next reservation is at ' . Carbon::parse($nextReservation->start_time)->toDateTimeString();
+            return __('Next reservation is at ') . Carbon::parse($nextReservation->start_time)->translatedFormat('D, d M Y H:i');
         }
 
-        return 'No upcoming reservations';
+        return __('No upcoming reservations');
     }
 
     public static function getDurations(int $machine_id, string $date, string $start_time): array
     {
+        $calendarSlotMaxTime = app(CalendarSettings::class)->slotMaxTime;
+        $reservationSettings = app(ReservationSettings::class);
+        $reservationMaxDuration = $reservationSettings->reservationMaxDuration;
+        $reservationTimeInterval = $reservationSettings->reservationTimeInterval;
+
         if ($machine_id && $date && $start_time) {
             $date = Carbon::parse($date);
             [$hour, $minute] = explode(':', $start_time);
@@ -190,60 +178,44 @@ class ReservationService
                 ->orderBy('start_time')
                 ->first();
 
-            if ($nextReservation && $start_time->diffInMinutes($nextReservation->start_time) < 180) {
+            if ($nextReservation && $start_time->diffInMinutes($nextReservation->start_time) < $reservationMaxDuration) {
                 $maxDuration = $start_time->diffInMinutes($nextReservation->start_time);
-            } elseif ($start_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
-                $maxDuration = $start_time->diffInMinutes($date->copy()->setTime(20, 0), false);
+            } elseif ($start_time->diffInMinutes($date->copy()->setTimeFrom($calendarSlotMaxTime)) < $reservationMaxDuration) {
+                $maxDuration = $start_time->diffInMinutes($date->copy()->setTimeFrom($calendarSlotMaxTime));
             } else {
-                $maxDuration = 180;
+                $maxDuration = $reservationMaxDuration;
             }
         } else {
-            $maxDuration = 180;
+            $maxDuration = $reservationMaxDuration;
         }
 
-        return collect([
-            '15' => '15 minutes',
-            '30' => '30 minutes',
-            '45' => '45 minutes',
-            '60' => '1 hour',
-            '75' => '1 hour 15 minutes',
-            '90' => '1 hour 30 minutes',
-            '105' => '1 hour 45 minutes',
-            '120' => '2 hours',
-            '135' => '2 hours 15 minutes',
-            '150' => '2 hours 30 minutes',
-            '165' => '2 hours 45 minutes',
-            '180' => '3 hours',
-        ])->filter(function ($label, $minutes) use ($maxDuration) {
-            return $minutes <= $maxDuration;
-        })->toArray();
+        $durations = collect();
+
+        for ($i = $reservationTimeInterval; $i <= $maxDuration; $i += $reservationTimeInterval) {
+            $durationLabel = $i . __(' minutes');
+
+            if ($i >= 60) {
+                $hours = floor($i / 60);
+                $minutes = $i % 60;
+                if ($minutes == 0) {
+                    $durationLabel = "{$hours} " . __('hour') . ($hours > 1 ? __('s') : '');
+                } else {
+                    $durationLabel = "{$hours} " . __('hour') . ($hours > 1 ? __('s') : '') . " {$minutes}" . ($minutes > 1 ? __(' minutes') : __(' minute'));
+                }
+            }
+
+            $durations->put($i, $durationLabel);
+        }
+
+        return $durations->toArray();
     }
-
-//    public static function getDefaultDuration($start_time, $end_time) {
-//        $duration = (string) Carbon::parse($start_time)->diffInMinutes(Carbon::parse($end_time));
-//
-//        $durations = [
-//            '15' => '15 minutes',
-//            '30' => '30 minutes',
-//            '45' => '45 minutes',
-//            '60' => '1 hour',
-//            '75' => '1 hour 15 minutes',
-//            '90' => '1 hour 30 minutes',
-//            '105' => '1 hour 45 minutes',
-//            '120' => '2 hours',
-//            '135' => '2 hours 15 minutes',
-//            '150' => '2 hours 30 minutes',
-//            '165' => '2 hours 45 minutes',
-//            '180' => '3 hours',
-//        ];
-//
-//        return [
-//            $duration => $durations[$duration]
-//        ];
-//    }
-
     public static function getAvailableBreakDurations(int $machine_id, string $date, string $start_time, string $duration): array
     {
+        $calendarSlotMaxTime = app(CalendarSettings::class)->slotMaxTime;
+        $reservationSettings = app(ReservationSettings::class);
+        $breakMaxDuration = $reservationSettings->breakMaxDuration;
+        $breakTimeInterval = $reservationSettings->breakTimeInterval;
+
         if ($machine_id && $date && $start_time) {
 
             $nextReservation = self::getNextReservation($machine_id, $date, $start_time);
@@ -254,30 +226,30 @@ class ReservationService
 
             $end_time = $start_time->addMinutes((int)$duration);
 
-            if ($nextReservation && $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time)) < 180) {
+            if ($nextReservation && $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time)) < $breakMaxDuration) {
                 $maxDuration = $end_time->diffInMinutes(Carbon::parse($nextReservation->start_time));
-            } elseif ($end_time->diffInMinutes($date->copy()->setTime(20, 0), false) < 180) {
-                $maxDuration = $end_time->diffInMinutes($date->copy()->setTime(20, 0), false);
+            } elseif ($end_time->diffInMinutes($date->copy()->setTimeFrom($calendarSlotMaxTime)) < $breakMaxDuration) {
+                $maxDuration = $end_time->diffInMinutes($date->copy()->setTimeFrom($calendarSlotMaxTime));
             } else {
-                $maxDuration = 180;
+                $maxDuration = $breakMaxDuration;
             }
 
         } else {
-            $maxDuration = 180;
+            $maxDuration = $breakMaxDuration;
         }
 
         $options = [];
-        for ($i = 5; $i <= $maxDuration; $i += 5) {
+        for ($i = $breakTimeInterval; $i <= $maxDuration; $i += $breakTimeInterval) {
             $hours = intdiv($i, 60);
             $minutes = $i % 60;
 
             if ($hours > 0) {
-                $label = $hours . ' hour' . ($hours > 1 ? 's' : '');
+                $label = $hours . ' ' . __('hour') . ($hours > 1 ? __('s') : '');
                 if ($minutes > 0) {
-                    $label .= ' ' . $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                    $label .= ' ' . $minutes . ($minutes > 1 ? __(' minutes') : __(' minute'));
                 }
             } else {
-                $label = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                $label = $minutes . ($minutes > 1 ? __(' minutes') : __(' minute'));
             }
 
             $options[(string)$i] = $label;

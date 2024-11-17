@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -18,6 +19,8 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 
 class ClientResource extends Resource
 {
@@ -70,18 +73,25 @@ class ClientResource extends Resource
                             ->suffixIcon('heroicon-o-user')
                             ->suffixIconColor('primary')
                             ->required(),
+
                         TextInput::make('email')
                             ->label(__('Client Email'))
                             ->email()
-                            ->unique(Client::class, 'email', ignoreRecord: true)
                             ->suffixIcon('heroicon-o-envelope')
-                            ->suffixIconColor('primary'),
+                            ->suffixIconColor('primary')
+                            ->required()
+                            ->unique(ignoreRecord: true, modifyRuleUsing: function (Unique $rule) {
+                                return $rule->where('tenant_id', Filament::getTenant()->id);
+                            }),
+
                         TextInput::make('telephone')
                             ->label(__('Client Telephone'))
-                            ->unique(Client::class, 'telephone', ignoreRecord: true)
                             ->nullable()
                             ->suffixIcon('heroicon-o-phone')
-                            ->suffixIconColor('primary'),
+                            ->suffixIconColor('primary')
+                            ->unique(ignoreRecord: true, modifyRuleUsing: function (Unique $rule) {
+                                return $rule->where('tenant_id', Filament::getTenant()->id);
+                            }),
                     ])->columnSpan(2)
             ]);
     }

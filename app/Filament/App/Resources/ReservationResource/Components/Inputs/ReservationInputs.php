@@ -94,7 +94,11 @@ class ReservationInputs
             ->noSearchResultsMessage(__('No users match your search.'))
             ->loadingMessage(__('Loading users...'))
             ->searchPrompt(__('Start typing to search...'))
-            ->options(User::all()->pluck('name', 'id'))
+            ->options(
+                User::query()->
+                where('is_admin', false)
+                    ->get()->pluck('name', 'id')
+            )
             ->suffixIcon('heroicon-o-user')
             ->suffixIconColor('primary')
             ->nullable()
@@ -145,7 +149,6 @@ class ReservationInputs
                     ->suffixIcon('heroicon-o-bars-2')
                     ->suffixIconColor('primary'),
                 Select::make('Machines')
-                    ->relationship('machines', 'name')
                     ->options(Machine::all()->pluck('name', 'id'))
                     ->placeholder(__('Select a machine'))
                     ->label(__('Machines'))
@@ -173,6 +176,9 @@ class ReservationInputs
                     'color' => $data['color'],
                     'price' => $data['price'],
                 ]);
+                $machines = is_array($data['Machines']) ? $data['Machines'] : [$data['Machines']];
+
+                $operation->machines()->attach($machines);
 
                 return $operation->id;
             })->live()
@@ -189,6 +195,11 @@ class ReservationInputs
             ->suffixIconColor('primary')
             ->required()
             ->live()
+            ->afterStateUpdated(function (callable $set) {
+                $set('start_time', null);
+                $set('duration', null);
+                $set('break', null);
+            })
             ->columnSpan(3);
     }
 
@@ -206,7 +217,11 @@ class ReservationInputs
             ->suffixIcon('heroicon-o-clock')
             ->suffixIconColor('primary')
             ->required()
-            ->live();
+            ->live()
+            ->afterStateUpdated(function (callable $set) {
+                $set('duration', null);
+                $set('break', null);
+            });
     }
 
     public static function selectDuration(): Select
@@ -224,7 +239,10 @@ class ReservationInputs
             ->suffixIcon('heroicon-o-clock')
             ->suffixIconColor('primary')
             ->required()
-            ->live();
+            ->live()
+            ->afterStateUpdated(function (callable $set) {
+                $set('break', null);
+            });
     }
 
     public static function selectBreakDuration(): Select
@@ -237,7 +255,7 @@ class ReservationInputs
             ->loadingMessage(__('Retrieving available break durations...'))
             ->searchPrompt(__('Type to find a break duration...'))
             ->options(fn(Get $get) => ReservationService::getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? ''))
-            ->helperText(__('You can add a break time after the reservation'))
+            ->helperText(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start_time') ?? '', $get('duration') ?? '')? '' : __('You can add a break time after the reservation'))
             ->hidden(fn(Get $get) => !$get('duration'))
             ->suffixIcon('heroicon-o-clock')
             ->suffixIconColor('primary')

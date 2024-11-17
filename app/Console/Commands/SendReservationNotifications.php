@@ -5,13 +5,18 @@ namespace App\Console\Commands;
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use Carbon\Carbon;
-use Filament\Notifications\Actions\Action;
-use Filament\Notifications\Events\DatabaseNotificationsSent;
-use Filament\Notifications\Notification;
 use Illuminate\Console\Command;
+use Spatie\LaravelSettings\SettingsRepositories\SettingsRepository;
 
 class SendReservationNotifications extends Command
 {
+    protected SettingsRepository $settings;
+
+    public function __construct(SettingsRepository $settings)
+    {
+        parent::__construct();
+        $this->settings = $settings;
+    }
     /**
      * The name and signature of the console command.
      *
@@ -41,26 +46,25 @@ class SendReservationNotifications extends Command
         Reservation::query()
             ->where('start_time', '>=', now()->addMinutes(15))
             ->where('start_time', '<=', now()->addMinutes(16))
+            ->where('status', '=', ReservationStatus::SCHEDULED)
             ->cursor()
             ->each(function ($reservation) {
 
-                Notification::make()
-                    ->title("Reservation on " . $reservation->machine->name  ." starts in 15 minutes!")
-                    ->body("Reservation scheduled at: " . $reservation->start_time)
-                    ->actions([
-                        Action::make('view')
-                            ->button()
-                            ->color('warning')
-                            ->url('/admin/reservations/' . $reservation->id),
-                        Action::make('edit')
-                            ->button()
-                            ->color('warning')
-                            ->url('/admin/reservations/' . $reservation->id . '/edit')
-                    ])
-                    ->warning()
-                    ->sendToDatabase($reservation->assigned_user);
+                $notification = new \App\Notifications\ReservationNotification(
+                    __("Reservation on ") . $reservation->machine->name  . __(" starts in 15 minutes!"),
+                    __("Reservation starts at ") . Carbon::parse($reservation->start_time)->translatedFormat('H:i')
+                    . __(', operations that need to be done: ') . $reservation->operations->pluck('name')->implode(', ') . '.',
+                    $reservation,
+                    'warning'
+                );
 
-                event(new DatabaseNotificationsSent($reservation->assigned_user));
+                if ($this->settings->getPropertyPayload('notifications_' . $reservation->tenant->id, 'upcomingReservationNotificationToMail')) {
+                    $reservation->assigned_user->notify($notification);
+                }
+
+                if ($this->settings->getPropertyPayload('notifications_' . $reservation->tenant->id, 'upcomingReservationNotification')) {
+                    $notification->toFilament($reservation->assigned_user);
+                }
             });
     }
 
@@ -73,19 +77,19 @@ class SendReservationNotifications extends Command
             ->cursor()
             ->each(function ($reservation) {
 
-                Notification::make()
-                    ->title("Reservation on " . $reservation->machine->name  ." is pending to be finished!")
-                    ->body("Reservation ended at: " . $reservation->end_time)
-                    ->actions([
-                        Action::make('view')
-                            ->button()
-                            ->url('/admin/reservations/' . $reservation->id)
-                            ->close()
-                    ])
-                    ->info()
-                    ->sendToDatabase($reservation->assigned_user);
+                $notification = new \App\Notifications\ReservationNotification(
+                    __("Reservation on ") . $reservation->machine->name  . __(" is pending to be finished!"),
+                    __("Reservation ended at: ") . Carbon::parse($reservation->end_time)->translatedFormat('D, d M Y H:i'),
+                    $reservation,
+                    'info'
+                );
 
-                event(new DatabaseNotificationsSent($reservation->assigned_user));
+                if ($this->settings->getPropertyPayload('notifications_' . $reservation->tenant->id, 'finishedReservationNotificationToMail')) {
+                    $reservation->assigned_user->notify($notification);
+                }
+                if ($this->settings->getPropertyPayload('notifications_' . $reservation->tenant->id, 'finishedReservationNotification')) {
+                    $notification->toFilament($reservation->assigned_user);
+                }
             });
     }
 }

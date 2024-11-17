@@ -85,12 +85,13 @@ class CalendarWidget extends BaseCalendarWidget
 
                 if ($reservation->status !== ReservationStatus::CANCELED) {
                     $events[] = Event::make($reservation)
+                        ->model(Reservation::class)
                         ->title($operationNames)
                         ->start(Carbon::parse($reservation->start_time)->addHour())
                         ->end(Carbon::parse($reservation->end_time)->addHour())
                         ->backgroundColor(match ($reservation->getReservationStatusAttribute()) {
-                            ReservationStatus::FINISHED => '#bbcafc',
-                            ReservationStatus::PENDING_FINISH => '#e1e2e3',
+                            ReservationStatus::FINISHED => app(CalendarSettings::class)->finished_color,
+                            ReservationStatus::PENDING_FINISH => app(CalendarSettings::class)->pending_finish_color,
                             default => $reservation->operations->first()->color
                         })
                         ->textColor('#314155')
@@ -118,7 +119,10 @@ class CalendarWidget extends BaseCalendarWidget
                         ->title('Break Time')
                         ->start(Carbon::parse($reservation->end_time)->addHour())
                         ->end(Carbon::parse($reservation->break_time)->addHour())
-                        ->backgroundColor($reservation->status === ReservationStatus::FINISHED ? '#f7d0e0' : '#FF7F7F')
+                        ->backgroundColor(
+                            $reservation->status === ReservationStatus::FINISHED
+                                && $reservation->break_time > now()
+                                ? app(CalendarSettings::class)->fiished_break_color : app(CalendarSettings::class)->break_color)
                         ->textColor('#000000');
                 }
 

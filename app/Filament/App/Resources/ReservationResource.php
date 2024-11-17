@@ -6,6 +6,7 @@ use App\Enums\ReservationStatus;
 use App\Filament\App\Resources\ReservationResource\Components\Forms\CreateReservationForm;
 use App\Filament\App\Resources\ReservationResource\Components\Forms\EditReservationForm;
 use App\Filament\App\Resources\ReservationResource\Components\Forms\ViewReservationForm;
+use App\Filament\App\Resources\ReservationResource\Components\ReservationFilters;
 use App\Filament\App\Resources\ReservationResource\Components\ReservationTable;
 use App\Filament\Resources\ReservationResource\Pages;
 use App\Filament\Resources\ReservationResource\RelationManagers;
@@ -43,16 +44,15 @@ class ReservationResource extends Resource
             if ($record->getReservationStatusAttribute() === ReservationStatus::FINISHED ||
                 $record->getReservationStatusAttribute() === ReservationStatus::CANCELED) {
                 return false;
-            } elseif ($record->user_id === auth()->id()) {
-                return true;
-            } elseif ($record->assigned_user_id === auth()->id()) {
-                return true;
             }
-
-            return false;
+//            elseif ($record->user_id === auth()->id()) {
+//                return true;
+//            } elseif ($record->assigned_user_id === auth()->id()) {
+//                return true;
+//            }
         }
 
-        return false;
+        return true;
     }
 
     public static function canDelete(Model $record): bool
@@ -60,14 +60,13 @@ class ReservationResource extends Resource
         if ($record instanceof Reservation) {
             if ($record->getReservationStatusAttribute() === ReservationStatus::FINISHED) {
                 return false;
-            } elseif ($record->user_id !== auth()->id() || $record->assigned_user_id !== auth()->id()) {
-                return false;
             }
-
-            return true;
+//            elseif ($record->user_id !== auth()->id() || $record->assigned_user_id !== auth()->id()) {
+//                return false;
+//            }
         }
 
-        return false;
+        return true;
     }
 
     public static function form(Form $form): Form
@@ -90,7 +89,15 @@ class ReservationResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return ReservationTable::make($table);
+        return ReservationTable::make($table)
+                ->filters([
+                    ReservationFilters::fromDate(),
+                    ReservationFilters::toDate(),
+                    ReservationFilters::client(),
+                    ReservationFilters::machine(),
+                    ReservationFilters::operations(),
+                    ReservationFilters::assigned_user()
+                ]);
     }
 
     public static function getRelations(): array

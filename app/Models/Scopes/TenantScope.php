@@ -18,6 +18,9 @@ class TenantScope implements Scope
      */
     public function apply(Builder $builder, Model $model)
     {
-        $builder->where('tenant_id', Filament::getTenant()->id);
+        $tenant = Filament::getTenant();
+        if ($tenant) {
+            $builder->where('tenant_id', $tenant->id);
+        }
     }
 }

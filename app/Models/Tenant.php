@@ -10,7 +10,11 @@ class Tenant extends Model
 {
     protected $fillable = [
         'name',
-        'slug'
+        'slug',
+        'address',
+        'phone',
+        'email',
+        'website'
     ];
 
     public function users(): BelongsToMany
@@ -36,4 +40,6 @@ class Tenant extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);
-    }}
+    }
+
+}

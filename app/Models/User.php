@@ -4,9 +4,11 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Traits\FilterByTenant;
+use Filament\Facades\Filament;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -17,7 +19,7 @@ use Illuminate\Support\Collection;
 
 class User extends Authenticatable implements FilamentUser, HasTenants
 {
-    use HasFactory, Notifiable, FilterByTenant;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -88,5 +90,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function getTenants(Panel $panel): array|Collection
     {
         return $this->tenants;
+    }
+
+    protected static function booted()
+    {
+        static::addGlobalScope('tenant', function ($builder) {
+            $tenant = Filament::getTenant();
+
+            if ($tenant) {
+                $builder->whereHas('tenants', function (Builder $query) use ($tenant) {
+                    $query->where('tenants.id', $tenant->id);
+                });
+            }
+        });
     }
 }

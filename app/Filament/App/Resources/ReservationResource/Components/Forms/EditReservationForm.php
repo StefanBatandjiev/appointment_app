@@ -24,7 +24,7 @@ class EditReservationForm
                 })
                 ->schema([
                     ReservationInputs::selectAssignedUser(),
-                    ReservationInputs::selectMultipleOperations()->columnSpan(2),
+                    ReservationInputs::selectMultipleOperations(true)->columnSpan(2),
                     ReservationInputs::selectDate()
                         ->minDate(function (Reservation $reservation) {
                             if ($reservation->getReservationStatusAttribute() === ReservationStatus::SCHEDULED) {

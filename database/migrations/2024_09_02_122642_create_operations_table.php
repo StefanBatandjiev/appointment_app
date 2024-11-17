@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('operations', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('tenant_id')->nullable()->constrained('tenants')->cascadeOnDelete();
             $table->string('name');
             $table->string('description')->nullable();
             $table->string('color');
+            $table->decimal('price', 8, 2)->nullable()->after('description');
             $table->timestamps();
         });
     }

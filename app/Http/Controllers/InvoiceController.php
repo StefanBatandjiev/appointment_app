@@ -15,15 +15,16 @@ class InvoiceController extends Controller
 {
     public function download(Reservation $reservation)
     {
+        $tenant = $reservation->tenant;
 
         App::setLocale('mk');
         $seller = new Party([
-            'name'          => 'Company',
-            'address'       => 'Adresa 123',
-            'phone'         => '070700700',
+            'name'          => $tenant->name,
+            'address'       => $tenant->address ?? 'N/A',
+            'phone'         => $tenant->phone ?? 'N/A',
             'custom_fields' => [
-                'email'     => 'contact@company.com',
-                'website'   => 'https://company-website.com',
+                'email'     => $tenant->email ?? 'N/A',
+                'website'   => $tenant->website ?? 'N/A',
             ],
         ]);
 
