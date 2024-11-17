@@ -49,7 +49,7 @@ class ReservationNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $mailMessage = (new MailMessage)
-            ->from($this->reservation->tenant->email ?? env('MAIL_FROM_ADDRESS'))
+            ->from($this->reservation->tenant->email ?? config('mail.from.address'))
             ->greeting(__('Hello, :name!', ['name' => $notifiable->name]))
             ->subject($this->title)
             ->line($this->body);

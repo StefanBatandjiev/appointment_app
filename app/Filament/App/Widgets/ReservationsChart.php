@@ -20,10 +20,18 @@ class ReservationsChart extends ChartWidget
 
         $monthlyReservations = array_fill(0, 12, 0);
 
-        $reservations = Reservation::query()->selectRaw('CAST(MONTH(created_at) AS UNSIGNED) as month, COUNT(*) as count')
-            ->whereYear('created_at', $currentYear)
-            ->groupBy('month')
-            ->get();
+        if(config('database.default') === 'mysql'){
+            $reservations = Reservation::query()->selectRaw('CAST(MONTH(created_at) AS UNSIGNED) as month, COUNT(*) as count')
+                ->whereYear('created_at', $currentYear)
+                ->groupBy('month')
+                ->get();
+        } else {
+            $reservations = Reservation::query()->selectRaw('strftime("%m", created_at) as month, COUNT(*) as count')
+                ->whereYear('created_at', $currentYear)
+                ->groupBy('month')
+                ->get();
+        }
+
 
         foreach ($reservations as $reservation) {
             $monthlyReservations[$reservation->month - 1] = $reservation->count;
