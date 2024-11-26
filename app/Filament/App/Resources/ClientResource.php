@@ -79,7 +79,6 @@ class ClientResource extends Resource
                             ->email()
                             ->suffixIcon('heroicon-o-envelope')
                             ->suffixIconColor('primary')
-                            ->required()
                             ->unique(ignoreRecord: true, modifyRuleUsing: function (Unique $rule) {
                                 return $rule->where('tenant_id', Filament::getTenant()->id);
                             }),
