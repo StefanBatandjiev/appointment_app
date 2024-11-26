@@ -62,20 +62,24 @@ class OperationResource extends Resource
                     ->schema([
                         TextEntry::make('name')
                             ->label(__('Operation Name'))
-                            ->icon('heroicon-o-bars-2'),
+                            ->icon('heroicon-o-bars-2')
+                            ->columnSpan(['default' => 2, 'md' => 1]),
 
                         TextEntry::make('machines.name')
                             ->label(__('Machines'))
                             ->lineClamp(3)
-                            ->icon('heroicon-o-cog'),
+                            ->icon('heroicon-o-cog')
+                            ->columnSpan(['default' => 2, 'md' => 1]),
 
                         TextEntry::make('price')
                             ->label(__('Price'))
                             ->formatStateUsing(fn ($state) =>
-                                number_format($state, 2, '.', ',') . __(' MKD')),
+                                number_format($state, 2, '.', ',') . __(' MKD'))
+                            ->columnSpan(['default' => 2, 'md' => 1]),
 
                         ColorEntry::make('color')
-                            ->label(__('Color')),
+                            ->label(__('Color'))
+                            ->columnSpan(['default' => 2, 'md' => 1]),
 
                         TextEntry::make('description')
                             ->label(__('Operation Description'))
@@ -97,7 +101,8 @@ class OperationResource extends Resource
                             ->label(__('Operation Name'))
                             ->required()
                             ->suffixIcon('heroicon-o-bars-2')
-                            ->suffixIconColor('primary'),
+                            ->suffixIconColor('primary')
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         Select::make('Machines')
                             ->relationship('machines', 'name')
                             ->options(Machine::all()->pluck('name', 'id'))
@@ -105,16 +110,19 @@ class OperationResource extends Resource
                             ->label(__('Machines'))
                             ->suffixIcon('heroicon-o-cog')
                             ->suffixIconColor('primary')
-                            ->multiple(),
+                            ->multiple()
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         TextInput::make('price')
                             ->label(__('Price'))
                             ->numeric()
                             ->required()
                             ->suffixIcon('heroicon-o-banknotes')
-                            ->suffixIconColor('primary'),
+                            ->suffixIconColor('primary')
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         ColorPicker::make('color')
                             ->label(__('Color'))
-                            ->required(),
+                            ->required()
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         Forms\Components\Textarea::make('description')
                             ->label(__('Operation Description'))
                             ->autosize()

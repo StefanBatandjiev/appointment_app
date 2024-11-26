@@ -23,8 +23,8 @@ class EditReservationForm
                     default => __('You can change the assigned user, operations, and reschedule the reservation'),
                 })
                 ->schema([
-                    ReservationInputs::selectAssignedUser(),
-                    ReservationInputs::selectMultipleOperations(true)->columnSpan(2),
+                    ReservationInputs::selectAssignedUser()->columnSpan(['default' => 3, 'md' => 1]),
+                    ReservationInputs::selectMultipleOperations(true)->columnSpan(['default' => 3, 'md' => 2]),
                     ReservationInputs::selectDate()
                         ->minDate(function (Reservation $reservation) {
                             if ($reservation->getReservationStatusAttribute() === ReservationStatus::SCHEDULED) {
@@ -41,7 +41,8 @@ class EditReservationForm
                         ->options(fn(Get $get) => ReservationService::getAvailableTimesForDate($get('machine_id'), $get('date'), $get('id')))
                         ->disabled(fn(Reservation $reservation) => $reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
                             $reservation->getReservationStatusAttribute() === ReservationStatus::ONGOING)
-                        ->dehydrated(),
+                        ->dehydrated()
+                        ->columnSpan(['default' => 3, 'md' => 1]),
                     ReservationInputs::selectDuration()
                         ->options(function (Reservation $reservation, Get $get) {
                             if ($reservation->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH ||
@@ -77,7 +78,8 @@ class EditReservationForm
                                 $set('date', Carbon::parse($reservation->start_time)->format('Y-m-d'));
                                 $set('start', Carbon::parse($reservation->start_time)->format('H:i'));
                             }
-                        }),
+                        })
+                        ->columnSpan(['default' => 3, 'md' => 1]),
                     ReservationInputs::selectBreakDuration()
                         ->options(fn(Get $get) => ReservationService::getAvailableBreakDurations($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
                         ->hidden(function (Reservation $reservation, Get $get) {
@@ -89,7 +91,8 @@ class EditReservationForm
                             return !$get('duration');
                         })
                         ->disabled(fn(Get $get) => ReservationService::disableBreaksInput($get('machine_id') ?? 0, $get('date') ?? '', $get('start') ?? '', $get('duration') ?? ''))
-                ])->columns(3)->columnSpan(2)
+                        ->columnSpan(['default' => 3, 'md' => 1])
+                ])->columns(['sm' => 1, 'md' => 3])->columnSpan(2)
         ];
     }
 }

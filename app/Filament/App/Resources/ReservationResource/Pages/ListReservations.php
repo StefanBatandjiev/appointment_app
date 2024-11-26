@@ -60,7 +60,7 @@ class ListReservations extends ListRecords
                 })
                 ->badge($ongoingQuery->count())
                 ->badgeColor('warning')
-                ->extraAttributes(['style' => "background-color: rgb(254, 215, 170)"]),
+                ->extraAttributes(['style' => "background-color: rgb(254, 215, 170)", 'class' => "whitespace-nowrap px-2 py-1 text-sm md:text-base md:px-4"]),
 
             'scheduled' => Tab::make(__('Scheduled'))
                 ->modifyQueryUsing(function ($query) use ($scheduledQuery) {
@@ -68,7 +68,7 @@ class ListReservations extends ListRecords
                 })
                 ->badge($scheduledQuery->count())
                 ->badgeColor('success')
-                ->extraAttributes(['style' => "background-color: rgb(187, 247, 208)"]),
+                ->extraAttributes(['style' => "background-color: rgb(187, 247, 208)", 'class' => "whitespace-nowrap px-2 py-1 text-sm md:text-base md:px-4"]),
 
             'pendingFinish' => Tab::make(__('Pending Finish'))
                 ->modifyQueryUsing(function ($query) use ($pendingFinishQuery) {
@@ -76,7 +76,7 @@ class ListReservations extends ListRecords
                 })
                 ->badge($pendingFinishQuery->count())
                 ->badgeColor('gray')
-                ->extraAttributes(['style' => "background-color: rgb(229, 231, 235)"]),
+                ->extraAttributes(['style' => "background-color: rgb(229, 231, 235)", 'class' => "whitespace-nowrap px-2 py-1 text-sm md:text-base md:px-4"]),
 
             'finished' => Tab::make(__('Finished'))
                 ->modifyQueryUsing(function ($query) use ($finishedQuery) {
@@ -84,7 +84,7 @@ class ListReservations extends ListRecords
                 })
                 ->badge($finishedQuery->count())
                 ->badgeColor('primary')
-                ->extraAttributes(['style' => "background-color: rgb(191, 219, 254)"]),
+                ->extraAttributes(['style' => "background-color: rgb(191, 219, 254)", 'class' => "whitespace-nowrap px-2 py-1 text-sm md:text-base md:px-4"]),
 
             'canceled' => Tab::make(__('Canceled'))
                 ->modifyQueryUsing(function ($query) use ($canceledQuery) {
@@ -92,7 +92,7 @@ class ListReservations extends ListRecords
                 })
                 ->badge($canceledQuery->count())
                 ->badgeColor('danger')
-                ->extraAttributes(['style' => "background-color: rgb(254, 202, 202)"]),
+                ->extraAttributes(['style' => "background-color: rgb(254, 202, 202)", 'class' => "whitespace-nowrap px-2 py-1 text-sm md:text-base md:px-4"]),
         ];
     }
 

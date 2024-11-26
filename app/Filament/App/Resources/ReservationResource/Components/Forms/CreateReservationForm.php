@@ -14,13 +14,13 @@ class CreateReservationForm
             Grid::make(3)
                 ->schema([
                     ReservationInputs::selectClient(),
-                    ReservationInputs::selectMachine(),
-                    ReservationInputs::selectAssignedUser(),
-                    ReservationInputs::selectMultipleOperations(true),
-                    ReservationInputs::selectDate(),
-                    ReservationInputs::selectStartTime(),
-                    ReservationInputs::selectDuration(),
-                    ReservationInputs::selectBreakDuration()
+                    ReservationInputs::selectMachine()->columnSpan(['default' => 3, 'md' => 2]),
+                    ReservationInputs::selectAssignedUser()->columnSpan(['default' => 3, 'md' => 1]),
+                    ReservationInputs::selectMultipleOperations(true)->columnSpan(3),
+                    ReservationInputs::selectDate()->columnSpan(3),
+                    ReservationInputs::selectStartTime()->columnSpan(['default' => 3, 'md' => 1]),
+                    ReservationInputs::selectDuration()->columnSpan(['default' => 3, 'md' => 1]),
+                    ReservationInputs::selectBreakDuration()->columnSpan(['default' => 3, 'md' => 1])
                 ])->columnSpan(2),
         ];
     }

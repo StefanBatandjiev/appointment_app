@@ -61,12 +61,14 @@ class MachineResource extends Resource
                         ->schema([
                             TextEntry::make('name')
                                 ->label(__('Machine Name'))
-                                ->icon('heroicon-o-cog'),
+                                ->icon('heroicon-o-cog')
+                                ->columnSpan(['default' => 2, 'md' => 1]),
 
                             TextEntry::make('operations.name')
                                 ->label(__('Operations'))
                                 ->lineClamp(3)
-                                ->icon('heroicon-o-queue-list'),
+                                ->icon('heroicon-o-queue-list')
+                                ->columnSpan(['default' => 2, 'md' => 1]),
 
                             TextEntry::make('description')
                                 ->label(__('Machine Description'))
@@ -88,7 +90,8 @@ class MachineResource extends Resource
                             ->label(__('Machine Name'))
                             ->required()
                             ->suffixIcon('heroicon-o-cog')
-                            ->suffixIconColor('primary'),
+                            ->suffixIconColor('primary')
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         Select::make('operations')
                             ->placeholder(__('Select an operation'))
                             ->label(__('Operations'))
@@ -96,7 +99,8 @@ class MachineResource extends Resource
                             ->options(Operation::all()->pluck('name', 'id'))
                             ->suffixIcon('heroicon-o-queue-list')
                             ->suffixIconColor('primary')
-                            ->multiple(),
+                            ->multiple()
+                            ->columnSpan(['default' => 2, 'md' => 1]),
                         Textarea::make('description')
                             ->label(__('Machine Description'))
                             ->autosize()

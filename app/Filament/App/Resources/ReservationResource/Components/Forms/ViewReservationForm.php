@@ -43,7 +43,7 @@ class ViewReservationForm
                                 {$svg}
                             </div>
                         ");
-                }),
+                })->columnSpan(['sm' => 2, 'md' => 1]),
             Placeholder::make('total_price')
                 ->label(function () {
                     $label = __('Total Price');
@@ -54,7 +54,7 @@ class ViewReservationForm
                     return new HtmlString("
                             <span class=\"px-1 text-lg font-semibold text-center\">{$label}</span>
                         ");
-                }),
+                })->columnSpan(['sm' => 2, 'md' => 1]),
             Actions::make([
                 \Filament\Forms\Components\Actions\Action::make('Cancel Reservation')
                     ->label(__('Cancel Reservation'))
@@ -101,45 +101,49 @@ class ViewReservationForm
                     ->color('primary')
                     ->visible(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::FINISHED)
                     ->url(fn(Reservation $record) => route('reservation.invoice.download', $record))->openUrlInNewTab(),
-            ])->verticallyAlignCenter(),
+            ])->verticallyAlignCenter()->columnSpan(['sm' => 2, 'md' => 1]),
             Select::make('client_id')
                 ->label(__('Client Name'))
                 ->options(Client::all()->pluck('name', 'id'))
                 ->suffixIcon('heroicon-o-user')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             Select::make('client_id')
                 ->label(__('Client Telephone'))
                 ->options(Client::all()->pluck('telephone', 'id')->map(fn($telephone) => $telephone ?? 'N/A'))
                 ->suffixIcon('heroicon-o-phone')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             Select::make('client_id')
                 ->label(__('Client Email'))
                 ->options(Client::all()->pluck('email', 'id')->map(fn($email) => $email ?? 'N/A'))
                 ->suffixIcon('heroicon-o-envelope')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             Select::make('user_id')
                 ->label(__('Created By User'))
                 ->options(User::all()->pluck('name', 'id')->lazy())
                 ->suffixIcon('heroicon-o-user-circle')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(2),
+                ->columnSpan(['sm' => 2]),
             Select::make('assigned_user_id')
                 ->label(__('Assigned User'))
                 ->options(User::all()->pluck('name', 'id')->lazy())
                 ->suffixIcon('heroicon-o-user')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             Select::make('machine_id')
                 ->label(__('Machine'))
                 ->options(Machine::all()->pluck('name', 'id')->lazy())
                 ->suffixIcon('heroicon-o-cog')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(2),
+                ->columnSpan(['sm' => 2]),
             Select::make('operations')
                 ->relationship('operations', 'name')
                 ->label(__('Operations'))
@@ -153,22 +157,26 @@ class ViewReservationForm
                 ->multiple()
                 ->suffixIcon('heroicon-o-queue-list')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             DateTimePicker::make('start_time')
                 ->label(__('Date and Start Time'))
                 ->suffixIcon('heroicon-o-calendar-date-range')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             TimePicker::make('end_time')
                 ->label(__('End Time'))
                 ->suffixIcon('heroicon-o-calendar-date-range')
                 ->suffixIconColor('primary')
-                ->disabled(),
+                ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1]),
             TimePicker::make('break_time')
                 ->label(__('Break Time Till'))
                 ->suffixIcon('heroicon-o-calendar-date-range')
                 ->suffixIconColor('primary')
                 ->disabled()
+                ->columnSpan(['sm' => 2, 'md' => 1])
         ];
     }
 }
