@@ -47,8 +47,6 @@ class ReservationObserver
      */
     public function updated(Reservation $reservation): void
     {
-        $slug = Filament::getTenant()->slug;
-
         if ($reservation->wasChanged('assigned_user_id')) {
             $previousAssignedUserId = $reservation->getOriginal('assigned_user_id');
             $newAssignedUser = User::query()->findOrFail($reservation->assigned_user_id);

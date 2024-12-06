@@ -17,13 +17,16 @@ return new class extends Migration {
 
         foreach ($reservations as $reservation) {
             foreach ($reservation->operations as $operation) {
-                if ($operation->price !== null) {
-                    DB::table('operation_reservation')
-                        ->where('reservation_id', $reservation->id)
-                        ->where('operation_id', $operation->id)
-                        ->update(['price' => $operation->price]);
-                }
+                DB::table('operation_reservation')
+                    ->where('reservation_id', $reservation->id)
+                    ->where('operation_id', $operation->id)
+                    ->update(['price' => $operation->price]);
             }
+
+            $reservation->load('operations');
+
+            $reservation->final_price = $reservation->operations->sum(fn($operation) => $operation->pivot->price);
+            $reservation->save();
         }
     }
 };
