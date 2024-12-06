@@ -11,7 +11,9 @@ use App\Models\User;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
@@ -44,13 +46,25 @@ class ViewReservationForm
                             </div>
                         ");
                 })->columnSpan(['sm' => 2, 'md' => 1]),
-            Placeholder::make('total_price')
+            Placeholder::make('discount_price')
                 ->label(function () {
-                    $label = __('Total Price');
+                    $label = __('Discount & Total Price');
                     return new HtmlString("<span class='text-lg font-extralight text-center'>{$label}</span>");
                 })
                 ->content(function (Reservation $record): HtmlString {
                     $label = $record->getTotalPriceAttribute() . __(' MKD');
+                    return new HtmlString("
+                            <span class=\"px-1 text-lg text-danger-600 text-center\">{$record->discount}%</span>
+                            <span class=\"px-1 text-lg text-gray-500 text-center\">{$label}</span>
+                        ");
+                })->columnSpan(['sm' => 2, 'md' => 1]),
+            Placeholder::make('total_price')
+                ->label(function () {
+                    $label = __('Final Price');
+                    return new HtmlString("<span class='text-lg font-extralight text-center'>{$label}</span>");
+                })
+                ->content(function (Reservation $record): HtmlString {
+                    $label = $record->getDiscountedPriceAttribute() . __(' MKD');
                     return new HtmlString("
                             <span class=\"px-1 text-lg font-semibold text-center\">{$label}</span>
                         ");
@@ -81,8 +95,21 @@ class ViewReservationForm
                     ->color('primary')
                     ->visible(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::PENDING_FINISH)
                     ->hidden(fn(Reservation $record) => $record->getReservationStatusAttribute() === ReservationStatus::FINISHED || $record->getReservationStatusAttribute() === ReservationStatus::CANCELED)
-                    ->action(function ($record) use ($refreshRecords) {
-                        $record->update(['status' => ReservationStatus::FINISHED]);
+                    ->modal()
+                    ->form([
+                        TextInput::make('discount')
+                            ->label(__('Discount'))
+                            ->numeric()
+                            ->suffixIcon('heroicon-o-percent-badge')
+                            ->suffixIconColor('primary')
+                            ->minValue(0)
+                            ->maxValue(100)
+                    ])
+                    ->action(function ($record, array $data) use ($refreshRecords) {
+                        $record->update([
+                            'status' => ReservationStatus::FINISHED,
+                            'discount' => $data['discount'],
+                        ]);
 
                         if (is_callable($refreshRecords)) {
                             call_user_func($refreshRecords);
@@ -122,7 +149,7 @@ class ViewReservationForm
                 ->suffixIcon('heroicon-o-envelope')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(['sm' => 2, 'md' => 1]),
+                ->columnSpan(['sm' => 2, 'md' => 2]),
             Select::make('user_id')
                 ->label(__('Created By User'))
                 ->options(User::all()->pluck('name', 'id')->lazy())
@@ -136,7 +163,7 @@ class ViewReservationForm
                 ->suffixIcon('heroicon-o-user')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(['sm' => 2, 'md' => 1]),
+                ->columnSpan(['sm' => 2, 'md' => 2]),
             Select::make('machine_id')
                 ->label(__('Machine'))
                 ->options(Machine::all()->pluck('name', 'id')->lazy())
@@ -147,24 +174,31 @@ class ViewReservationForm
             Select::make('operations')
                 ->relationship('operations', 'name')
                 ->label(__('Operations'))
-                ->options(
-                    Operation::all()
-                        ->mapWithKeys(fn($operation) => [
-                            $operation->id => "{$operation->name} - {$operation->price}" . __(' MKD')
-                        ])
-                        ->lazy()
-                )
+                ->options(function (Reservation $record) {
+                    return $record->operations
+                        ->mapWithKeys(function (Operation $operation) use ($record) {
+                            $price = $operation->pivot->price ?? $operation->price;
+
+                            if ($record->getReservationStatusAttribute() === ReservationStatus::FINISHED) {
+                                $price = $operation->pivot->price ?? $price;
+                            }
+
+                            return [
+                                $operation->id => "{$operation->name} - {$price} " . __('MKD')
+                            ];
+                        });
+                })
                 ->multiple()
                 ->suffixIcon('heroicon-o-queue-list')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(['sm' => 2, 'md' => 1]),
+                ->columnSpan(['sm' => 2, 'md' => 2]),
             DateTimePicker::make('start_time')
                 ->label(__('Date and Start Time'))
                 ->suffixIcon('heroicon-o-calendar-date-range')
                 ->suffixIconColor('primary')
                 ->disabled()
-                ->columnSpan(['sm' => 2, 'md' => 1]),
+                ->columnSpan(['sm' => 2, 'md' => 2]),
             TimePicker::make('end_time')
                 ->label(__('End Time'))
                 ->suffixIcon('heroicon-o-calendar-date-range')

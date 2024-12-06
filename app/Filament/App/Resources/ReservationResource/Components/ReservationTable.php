@@ -63,13 +63,22 @@ class ReservationTable
                 TextColumn::make('machine')
                     ->label(__('Machine'))
                     ->state(function (Reservation $reservation) {
-                        $operationsList = $reservation->operations->map(function ($operation) {
-                            return "
+                        $operationsList = $reservation->operations->map(function ($operation) use ($reservation) {
+                            if ($reservation->getReservationStatusAttribute() === ReservationStatus::FINISHED) {
+                                return "
+                                <div class=\"flex items-center space-x-2\">
+                                    <div class=\"w-4 h-4 inline-block\" style=\"background-color: {$operation->color};\"></div>
+                                    <span class=\"text-sm text-gray-500\">{$operation->name} - " . number_format($operation->pivot->price, 2, '.', ',') . __(' MKD') . "</span>
+                                </div>
+                            ";
+                            } else {
+                                return "
                                 <div class=\"flex items-center space-x-2\">
                                     <div class=\"w-4 h-4 inline-block\" style=\"background-color: {$operation->color};\"></div>
                                     <span class=\"text-sm text-gray-500\">{$operation->name} - " . number_format($operation->price, 2, '.', ',') . __(' MKD') . "</span>
                                 </div>
                             ";
+                            }
                         })->join('');
 
                         return new HtmlString("
@@ -116,17 +125,29 @@ class ReservationTable
                             </div>
                         ");
                     })->alignCenter(),
-                TextColumn::make('user.name')
-                    ->label(__('Created By User'))
+//                TextColumn::make('user.name')
+//                    ->label(__('Created By User'))
+//                    ->state(function (Reservation $reservation) {
+//                        return new HtmlString("
+//                            <div class=\"flex flex-col items-center\">
+//                                <span class=\"text-base text-gray-700 font-semibold\">{$reservation->user->name}</span>
+//                            </div>
+//                        ");
+//                    })->alignCenter(),
+                TextColumn::make('discount_total_price')
+                    ->label(__('Discount & Total Price'))
                     ->state(function (Reservation $reservation) {
+                        $formattedPrice = number_format($reservation->total_price, 2, '.', ',') . __(' MKD');
+
                         return new HtmlString("
-                            <div class=\"flex flex-col items-center\">
-                                <span class=\"text-base text-gray-700 font-semibold\">{$reservation->user->name}</span>
+                            <div class='flex flex-col'>
+                                <span class='text-lg font-semibold text-danger-600'>{$reservation->discount}%</span>
+                                <span class='text-base font-semibold text-gray-400'>{$formattedPrice}</span>
                             </div>
                         ");
                     })->alignCenter(),
                 TextColumn::make('combined_status_price')
-                    ->label(__('Status & Total Price'))
+                    ->label(__('Status & Final Price'))
                     ->state(function (Reservation $record) {
                         $svg = match ($record->getReservationStatusAttribute()) {
                             ReservationStatus::ONGOING => svg('heroicon-o-minus-circle', 'w-6 h-6', ['style' => 'filter: brightness(0) saturate(100%) invert(79%) sepia(66%) saturate(2254%) hue-rotate(352deg) brightness(103%) contrast(104%);'])->toHtml(),
@@ -144,7 +165,7 @@ class ReservationTable
                             ReservationStatus::PENDING_FINISH => 'text-gray-500',
                         };
 
-                        $formattedPrice = number_format($record->total_price, 2, '.', ',') . __(' MKD');
+                        $formattedPrice = number_format($record->discounted_price, 2, '.', ',') . __(' MKD');
 
                         $statusLabel = __($record->getReservationStatusAttribute()->value);
 
@@ -157,7 +178,7 @@ class ReservationTable
                                 <span class='text-center text-base font-semibold text-gray-700'>{$formattedPrice}</span>
                             </div>
                         ");
-                    })
+                    })->alignCenter()
             ])
             ->defaultSort(function (Builder $query) {
                 $currentDate = now();

@@ -75,7 +75,7 @@ class ReservationResource extends Resource
             ->schema([
                 Section::make()->schema(
                     ViewReservationForm::form()
-                )->columns(['sm' => 2, 'md' => 3])->columnSpan(2)->visible(fn($livewire) => $livewire instanceof \App\Filament\App\Resources\ReservationResource\Pages\ViewReservation),
+                )->columns(['sm' => 2, 'md' => 4])->columnSpan(2)->visible(fn($livewire) => $livewire instanceof \App\Filament\App\Resources\ReservationResource\Pages\ViewReservation),
 
                 Section::make()->schema(
                     CreateReservationForm::form()

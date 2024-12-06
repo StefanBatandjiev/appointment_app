@@ -18,7 +18,8 @@ class Operation extends Model
 
     public function reservations(): BelongsToMany
     {
-        return $this->belongsToMany(Reservation::class, 'operation_reservation', 'operation_id', 'reservation_id');
+        return $this->belongsToMany(Reservation::class, 'operation_reservation', 'operation_id', 'reservation_id')
+            ->withPivot('price');
     }
 
     public function machines(): BelongsToMany
