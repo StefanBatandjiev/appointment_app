@@ -10,11 +10,14 @@ use App\Models\Reservation;
 use App\Models\User;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
@@ -100,10 +103,36 @@ class ViewReservationForm
                         TextInput::make('discount')
                             ->label(__('Discount'))
                             ->numeric()
+                            ->step('0.01')
                             ->suffixIcon('heroicon-o-percent-badge')
                             ->suffixIconColor('primary')
                             ->minValue(0)
                             ->maxValue(100)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                $originalPrice = $get('original_price');
+                                if ($originalPrice !== null) {
+                                    $set('price', ceil($originalPrice * (1 - $state / 100)));
+                                }
+                            }),
+
+                        TextInput::make('price')
+                            ->label(__('Final Price'))
+                            ->numeric()
+                            ->default(fn(Reservation $record) => $record->getTotalPriceAttribute())
+                            ->suffixIcon('heroicon-o-banknotes')
+                            ->suffixIconColor('primary')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                $originalPrice = $get('original_price');
+                                if ($originalPrice !== null && $originalPrice > 0) {
+                                    $set('discount', round((1 - $state / $originalPrice) * 100, 2));
+                                }
+                            }),
+
+                        Hidden::make('original_price')
+                            ->default(fn(Reservation $record) => $record->getTotalPriceAttribute()),
+
                     ])
                     ->action(function ($record, array $data) use ($refreshRecords) {
                         $record->update([

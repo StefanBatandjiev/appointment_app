@@ -35,7 +35,7 @@ class Reservation extends Model
         $price = $this->getTotalPriceAttribute();
         $discount = $this->discount ?? 0;
 
-        return $price - ($price * $discount / 100);
+        return ceil($price - ($price * $discount / 100));
     }
 
     public function getReservationStatusAttribute()
